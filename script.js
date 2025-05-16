@@ -80,7 +80,7 @@ function initializeBoard() {
     } else { // НАЧАЛО ELSE, относящегося к if (chessBoardElement)
         debugMessage("ОШИБКА: Элемент доски 'chessBoard' НЕ НАЙДЕН для PoeticBoardOverlay!");
     } // КОНЕЦ ELSE
-// Конец initializeBoard()
+}// Конец initializeBoard()
 
 function renderBoard() {
     // debugMessage("renderBoard called"); // Может быть слишком часто
