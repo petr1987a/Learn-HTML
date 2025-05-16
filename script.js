@@ -420,7 +420,7 @@ function makeBotMove() {
     const botColor = 'b';
     if (currentPlayer !== botColor || gameStatus !== "ongoing") return;
     const boardForAI = JSON.parse(JSON.stringify(currentBoardState));
-    const moveData = ChessAI.getRandomMove(
+    const moveData = ChessAI.getSmartMove(
         boardForAI,
         botColor,
         getAllLegalMoves,
