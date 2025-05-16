@@ -76,7 +76,6 @@ function initializeBoard() {
     clearKingInCheckHighlight();
     updateInfoPanel("Игра началась. Ход Белых.");
 }
-}// Конец initializeBoard()
 
 function renderBoard() {
     // debugMessage("renderBoard called"); // Может быть слишком часто
