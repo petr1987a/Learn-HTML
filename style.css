@@ -1,0 +1,31 @@
+body {
+    font-family: sans-serif;
+    display: flex;
+    flex-direction: column; /* Чтобы заголовок был над доской */
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh; /* Чтобы все было по центру экрана */
+    margin: 0;
+    background-color: #333; /* Темный фон, чтобы доска выделялась */
+    color: #fff; /* Белый текст для заголовка */
+}
+
+#chessBoard {
+    display: grid; /* Используем Grid для создания сетки доски */
+    grid-template-columns: repeat(8, 70px); /* 8 колонок по 70px */
+    grid-template-rows: repeat(8, 70px);    /* 8 рядов по 70px */
+    width: 560px; /* 8 * 70px */
+    height: 560px; /* 8 * 70px */
+    border: 5px solid #555; /* Рамка вокруг доски */
+}
+
+/* Пока просто для примера, потом мы добавим цвета клеток через JS или CSS классы */
+.square {
+    width: 70px;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 50px; /* Размер для символов фигур, если будем их использовать */
+    box-sizing: border-box; /* Чтобы padding и border не влияли на общий размер */
+}
