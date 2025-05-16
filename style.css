@@ -70,7 +70,7 @@ h1 {
 
 .piece.black {
     color: #2c3e50; /* Цвет черных фигур (темно-синий, как фон) */
-    /* text-shadow: 0 0 3px #ffffff; /* Легкий светлый контур для черных */
+    /* text-shadow: 0 0 3px #ffffff; */ /* Легкий светлый контур для черных (можно раскомментировать при необходимости) */
 }
 
 .selected {
@@ -83,6 +83,18 @@ h1 {
     border-radius: 50%; /* Сделаем подсветку круглой */
     box-shadow: 0 0 10px #2ecc71;
 }
+
+.check {
+    /* Подсветка короля под шахом */
+    box-shadow: 0 0 15px 5px rgba(255, 0, 0, 0.7) inset !important;
+}
+
+.checkmate {
+    /* Подсветка короля под матом */
+    box-shadow: 0 0 20px 10px rgba(139, 0, 0, 0.8) inset !important;
+    background-color: rgba(139, 0, 0, 0.3) !important;
+}
+
 
 #resetButton {
     padding: 10px 20px;
