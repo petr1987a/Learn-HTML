@@ -1,13 +1,12 @@
-// ChessAI: чисто синхронный минимакс без воркеров
+// ChessAI: умный минимакс без воркеров, динамическая глубина
 
 const ChessAI = {
     getSmartMove: function(boardStateFromGame, playerColor, getAllLegalMovesFunc, isKingInCheckFunc) {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             const boardSize = 8;
             const moves = getAllLegalMovesFunc(playerColor, boardStateFromGame, boardSize);
 
             if (!moves || moves.length === 0) {
-                console.error("Нет доступных ходов для бота!");
                 resolve(null);
                 return;
             }
@@ -38,7 +37,6 @@ const ChessAI = {
                 const moves = getAllLegalMovesFunc(currentColor, board, boardSize);
 
                 if (moves.length === 0) {
-                    // Мат или пат
                     if (isKingInCheckFunc(currentColor, board, boardSize)) {
                         return { value: maximizingPlayer ? -10000 : 10000 };
                     } else {
@@ -75,10 +73,14 @@ const ChessAI = {
             }
             const orderedMoves = orderMoves(moves);
 
+            // Динамическая глубина: больше ходов - меньше глубина
+            let depth = 3;
+            if (orderedMoves.length <= 10) depth = 4;
+            else if (orderedMoves.length >= 30) depth = 2;
+
             // Синхронно считаем минимакс для всех ходов
             let bestMove = null;
             let bestValue = playerColor === 'w' ? -Infinity : Infinity;
-            const depth = 2; // Глубина поиска
 
             for (const move of orderedMoves) {
                 const newBoard = makeMove(boardStateFromGame, move);
