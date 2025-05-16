@@ -427,7 +427,13 @@ function makeBotMove() {
         isValidMove
     );
     if (moveData && moveData.pieceCode) {
-        movePiece(moveData.startRow, moveData.startCol, moveData.endRow, moveData.endCol, moveData.moveDetails);
+        movePiece(
+            moveData.from.r,
+            moveData.from.c,
+            moveData.to.tr,
+            moveData.to.tc,
+            moveData.details
+        );
         switchPlayer();
     } else if (gameStatus === "ongoing") {
         updateInfoPanel("Ошибка ИИ: не удалось сделать ход. Попробуйте начать заново.");
