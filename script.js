@@ -114,70 +114,118 @@ function onSquareClick(row, col) {
 
 function isValidMove(startRow, startCol, endRow, endCol) {
     const piece = currentBoardState[startRow][startCol];
-    const targetPiece = currentBoardState[endRow][endCol];
+    const targetPieceOnEndSquare = currentBoardState[endRow][endCol]; // Фигура на конечной клетке
 
-    if (!piece) return false; // Нельзя ходить пустой клеткой
-    if (startRow === endRow && startCol === endCol) return false; // Нельзя ходить на ту же клетку
+    if (!piece) return false; 
+    if (startRow === endRow && startCol === endCol) return false;
 
-    // Нельзя ходить на клетку со своей фигурой
-    if (targetPiece && targetPiece.startsWith(piece[0])) { // piece[0] - 'w' или 'b'
-        return false;
+    if (targetPieceOnEndSquare && targetPieceOnEndSquare.startsWith(piece[0])) {
+        return false; // Нельзя ходить на клетку со своей фигурой
     }
 
-    const pieceType = piece.substring(1); // 'P', 'R', 'N', 'B', 'Q', 'K'
-    const pieceColor = piece[0]; // 'w' или 'b'
+    const pieceType = piece.substring(1);
+    const pieceColor = piece[0];
 
     switch (pieceType) {
-        case 'P': // Пешка
-            const direction = (pieceColor === 'w') ? -1 : 1; // -1 для белых (вверх), +1 для черных (вниз)
+        case 'P': // Пешка (логика остается прежней)
+            const direction = (pieceColor === 'w') ? -1 : 1;
             const initialRow = (pieceColor === 'w') ? 6 : 1;
-
-            // Обычный ход на одну клетку вперед
-            if (endCol === startCol && endRow === startRow + direction && !targetPiece) {
+            if (endCol === startCol && endRow === startRow + direction && !targetPieceOnEndSquare) {
                 return true;
             }
-            // Первый ход на две клетки вперед
-            if (endCol === startCol && startRow === initialRow && endRow === startRow + 2 * direction && !targetPiece && !currentBoardState[startRow + direction][startCol]) {
+            if (endCol === startCol && startRow === initialRow && endRow === startRow + 2 * direction && !targetPieceOnEndSquare && !currentBoardState[startRow + direction][startCol]) {
                 return true;
             }
-            // Взятие по диагонали
-            if (Math.abs(endCol - startCol) === 1 && endRow === startRow + direction && targetPiece && !targetPiece.startsWith(pieceColor)) {
+            if (Math.abs(endCol - startCol) === 1 && endRow === startRow + direction && targetPieceOnEndSquare && !targetPieceOnEndSquare.startsWith(pieceColor)) {
                 return true;
             }
-            // TODO: Взятие на проходе (En Passant)
-            // TODO: Превращение пешки
-            return false; // Если ни одно из правил пешки не сработало
+            return false;
 
         case 'R': // Ладья (Rook)
-            // TODO: Логика для Ладьи
-            console.warn(`Логика ходов для Ладьи еще не реализована!`);
-            return (startRow === endRow || startCol === endCol); // Заглушка: по прямой
+            if (startRow !== endRow && startCol !== endCol) {
+                return false; // Ладья ходит только по прямой
+            }
+            // Проверка пути на наличие препятствий
+            if (startRow === endRow) { // Горизонтальный ход
+                const step = (endCol > startCol) ? 1 : -1;
+                for (let c = startCol + step; c !== endCol; c += step) {
+                    if (currentBoardState[startRow][c]) return false; // Препятствие на пути
+                }
+            } else { // Вертикальный ход (startCol === endCol)
+                const step = (endRow > startRow) ? 1 : -1;
+                for (let r = startRow + step; r !== endRow; r += step) {
+                    if (currentBoardState[r][startCol]) return false; // Препятствие на пути
+                }
+            }
+            return true;
 
-        case 'N': // Конь (Knight)
+        case 'N': // Конь (Knight) - логика остается пока заглушкой
             // TODO: Логика для Коня
             console.warn(`Логика ходов для Коня еще не реализована!`);
-            const dRow = Math.abs(endRow - startRow);
-            const dCol = Math.abs(endCol - startCol);
-            return (dRow === 2 && dCol === 1) || (dRow === 1 && dCol === 2); // Заглушка: буквой Г
+            const dRowN = Math.abs(endRow - startRow);
+            const dColN = Math.abs(endCol - startCol);
+            return (dRowN === 2 && dColN === 1) || (dRowN === 1 && dColN === 2);
 
         case 'B': // Слон (Bishop)
-            // TODO: Логика для Слона
-            console.warn(`Логика ходов для Слона еще не реализована!`);
-            return (Math.abs(endRow - startRow) === Math.abs(endCol - startCol)); // Заглушка: по диагонали
+            if (Math.abs(endRow - startRow) !== Math.abs(endCol - startCol)) {
+                return false; // Слон ходит только по диагонали
+            }
+            // Проверка пути на наличие препятствий
+            const dRowB = (endRow > startRow) ? 1 : -1;
+            const dColB = (endCol > startCol) ? 1 : -1;
+            let currentRowB = startRow + dRowB;
+            let currentColB = startCol + dColB;
+            while (currentRowB !== endRow || currentColB !== endCol) {
+                if (currentBoardState[currentRowB][currentColB]) return false; // Препятствие на пути
+                currentRowB += dRowB;
+                currentColB += dColB;
+            }
+            return true;
 
-        case 'Q': // Ферзь (Queen)
-            // TODO: Логика для Ферзя
-            console.warn(`Логика ходов для Ферзя еще не реализована!`);
-            return (startRow === endRow || startCol === endCol || Math.abs(endRow - startRow) === Math.abs(endCol - startCol)); // Заглушка: как ладья + слон
+        case 'Q': // Ферзь (Queen) - комбинация Ладьи и Слона
+            // Проверка, ходит ли как Ладья
+            const isRookMove = (startRow === endRow || startCol === endCol);
+            // Проверка, ходит ли как Слон
+            const isBishopMove = (Math.abs(endRow - startRow) === Math.abs(endCol - startCol));
 
-        case 'K': // Король (King)
+            if (!isRookMove && !isBishopMove) {
+                return false; // Ферзь ходит только как ладья или слон
+            }
+
+            // Проверка пути на наличие препятствий (аналогично Ладье и Слону)
+            if (isRookMove) { // Если движется как Ладья
+                if (startRow === endRow) { // Горизонтальный ход
+                    const step = (endCol > startCol) ? 1 : -1;
+                    for (let c = startCol + step; c !== endCol; c += step) {
+                        if (currentBoardState[startRow][c]) return false;
+                    }
+                } else { // Вертикальный ход
+                    const step = (endRow > startRow) ? 1 : -1;
+                    for (let r = startRow + step; r !== endRow; r += step) {
+                        if (currentBoardState[r][startCol]) return false;
+                    }
+                }
+            } else { // if (isBishopMove) - Если движется как Слон
+                const dRowQ = (endRow > startRow) ? 1 : -1;
+                const dColQ = (endCol > startCol) ? 1 : -1;
+                let currentRowQ = startRow + dRowQ;
+                let currentColQ = startCol + dColQ;
+                while (currentRowQ !== endRow || currentColQ !== endCol) { // Важно: ||, а не && для диагонали
+                    if (currentBoardState[currentRowQ][currentColQ]) return false;
+                    currentRowQ += dRowQ;
+                    currentColQ += dColQ;
+                }
+            }
+            return true;
+
+        case 'K': // Король (King) - логика остается пока заглушкой
             // TODO: Логика для Короля
             console.warn(`Логика ходов для Короля еще не реализована!`);
-            return (Math.abs(endRow - startRow) <= 1 && Math.abs(endCol - startCol) <= 1); // Заглушка: на 1 клетку
+            return (Math.abs(endRow - startRow) <= 1 && Math.abs(endCol - startCol) <= 1);
             // TODO: Рокировка
         
         default:
-            return false; // Неизвестный тип фигуры
+            return false;
     }
 }
 
@@ -199,7 +247,6 @@ function highlightPossibleMoves(row, col, pieceCode) {
 function clearPossibleMovesHighlight() {
     document.querySelectorAll('.possible-move').forEach(sq => sq.classList.remove('possible-move'));
 }
-
 
 function movePiece(startRow, startCol, endRow, endCol) {
     const piece = currentBoardState[startRow][startCol];
