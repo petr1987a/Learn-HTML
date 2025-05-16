@@ -2,64 +2,45 @@
 
 const ChessAI = {
     // Можно будет добавлять разные уровни сложности или типы AI сюда
-    getRandomMove: function(boardState, playerColor, getAllLegalMovesFunc, isValidMoveFunc) {
-        // playerColor - цвет бота, который должен сделать ход ('w' или 'b')
-        // boardState - текущее состояние доски (массив массивов)
-        // getAllLegalMovesFunc - ссылка на нашу функцию getAllLegalMoves из основного скрипта
-        // isValidMoveFunc - ссылка на нашу функцию isValidMove из основного скрипта
+    // chess_ai.js
+getRandomMove: function(boardState, playerColor, getAllLegalMovesFunc, isValidMoveFunc) {
+    console.log("[AI] getRandomMove called for player:", playerColor, "Current AI boardState:", JSON.parse(JSON.stringify(boardState))); // Лог состояния
 
-        const legalMoves = getAllLegalMovesFunc(playerColor, boardState);
+    const legalMoves = getAllLegalMovesFunc(playerColor, boardState /*, ... другие нужные параметры, если рефакторил */);
+    console.log("[AI] Legal moves found:", legalMoves);
 
-        if (legalMoves.length === 0) {
-            return null; // Нет доступных ходов (мат или пат)
-        }
+    if (!legalMoves || legalMoves.length === 0) { // Добавил проверку на !legalMoves
+        console.error("[AI] No legal moves returned by getAllLegalMovesFunc.");
+        return null;
+    }
 
-        const randomMoveData = legalMoves[Math.floor(Math.random() * legalMoves.length)];
+    const randomMoveData = legalMoves[Math.floor(Math.random() * legalMoves.length)];
+    console.log("[AI] Selected random move data:", randomMoveData);
 
-        // Важно: getAllLegalMoves возвращает { from: { r, c }, to: { tr, tc } }
-        // Нам нужно также получить moveDetails для функции movePiece
-        const startRow = randomMoveData.from.r;
-        const startCol = randomMoveData.from.c;
-        const endRow = randomMoveData.to.tr;
-        const endCol = randomMoveData.to.tc;
+    const startRow = randomMoveData.from.r;
+    const startCol = randomMoveData.from.c;
+    const endRow = randomMoveData.to.tr;
+    const endCol = randomMoveData.to.tc;
 
-        // Получаем pieceCode со стартовой клетки для isValidMove
-        const pieceCode = boardState[startRow][startCol];
-        if (!pieceCode) {
-            console.error("AI: Ошибка - на стартовой клетке случайного хода нет фигуры!", randomMoveData);
-            return null; // Не должно произойти, если getAllLegalMoves работает корректно
-        }
+    const pieceCode = boardState[startRow][startCol];
+    if (!pieceCode) {
+        console.error("[AI] Error - no piece on start square of random move:", randomMoveData, "Board state at square:", boardState[startRow][startCol]);
+        return null;
+    }
+    console.log(`[AI] Trying to validate move for piece ${pieceCode} from ${startRow},${startCol} to ${endRow},${endCol}`);
 
-        // Важно передать isValidMoveFunc для получения moveDetails
-        // isValidMove также нуждается в текущем состоянии доски, но оно у нас есть (boardState)
-        // Однако, isValidMove в текущей реализации использует ГЛОБАЛЬНЫЙ currentBoardState.
-        // Это нужно будет поправить, чтобы isValidMove принимал boardState как аргумент.
-        // И _getPieceSpecificMoveLogic тоже.
-        // Пока допустим, что мы это исправим или что isValidMoveFunc уже адаптирована.
-        // Для передачи глобальных переменных, таких как enPassantTargetSquare и флаги рокировки,
-        // их тоже нужно будет либо передавать в AI, либо isValidMove должен их как-то получать.
-        // ИДЕАЛЬНО: isValidMove и _getPieceSpecificMoveLogic должны принимать полный контекст игры или boardState.
+    // Вот здесь ключевой момент: как isValidMoveFunc будет работать с boardState?
+    // Если isValidMoveFunc - это наш старый isValidMove, он будет использовать ГЛОБАЛЬНЫЙ currentBoardState,
+    // а не переданный `boardState`. Это самая частая причина проблем.
+    // Для чистоты, isValidMove ДОЛЖЕН быть рефакторен, чтобы принимать boardState.
+    const moveDetails = isValidMoveFunc(startRow, startCol, endRow, endCol /*, pieceCode, boardState, enPassantTarget, castlingFlags - если рефакторил */);
+    console.log("[AI] Move details from isValidMoveFunc:", moveDetails);
 
-        // --- НАЧАЛО СЕКЦИИ, ТРЕБУЮЩЕЙ ВНИМАНИЯ К ЗАВИСИМОСТЯМ isValidMove ---
-        // Предположим, что isValidMove можно вызвать так,
-        // или мы передаем все нужные зависимости в ChessAI.getRandomMove
-        // Это САМЫЙ СЛОЖНЫЙ МОМЕНТ при вынесении AI.
-        // Нам нужна версия isValidMove, которая может работать с переданным состоянием доски
-        // и не полагается на глобальные currentBoardState, enPassantTargetSquare и флаги рокировки.
-        // Либо мы передаем весь этот "контекст" в функцию AI.
-
-        // Пока что, для простоты, будем считать, что `isValidMoveFunc` - это наш глобальный `isValidMove`,
-        // который работает с `currentBoardState`. Это не идеально для чистоты AI модуля, но рабочий вариант для начала.
-        const moveDetails = isValidMoveFunc(startRow, startCol, endRow, endCol);
-        // --- КОНЕЦ СЕКЦИИ ---
-
-        if (!moveDetails) {
-             console.error("AI: Случайный ход оказался невалидным по какой-то причине (это плохо):", randomMoveData);
-             // Этого не должно происходить, если getAllLegalMoves работает корректно
-             // и возвращает только валидные ходы.
-             return null;
-        }
-
+    if (!moveDetails) {
+         console.error("[AI] The random move was deemed invalid by isValidMoveFunc. This is often due to isValidMove using global state instead of passed state, or missing context like enPassant/castling flags.");
+         return null;
+    }
+    
         return {
             startRow: startRow,
             startCol: startCol,
