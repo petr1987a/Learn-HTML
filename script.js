@@ -66,6 +66,22 @@ function initializeBoard() {
     updateInfoPanel("Игра началась. Ход Белых.");
     console.log('Доска инициализирована.');
 }
+// В script.js
+const chessBoardElement = document.getElementById('chessBoard'); // Получи свой элемент доски
+
+// Активировать поэтический оверлей
+if (chessBoardElement) {
+    PoeticBoardOverlay.activate(chessBoardElement);
+    // PoeticBoardOverlay.debugMessageLocal("Poetic Overlay Activated from main script!");
+    // Если хочешь использовать свои фразы:
+    // const myCustomPoetry = ["Думы мои, думы...", "Вперед, к победе!", "Семь раз отмерь..."];
+    // PoeticBoardOverlay.setPhrases(myCustomPoetry);
+    // PoeticBoardOverlay.activate(chessBoardElement); // Если фразы заданы до активации
+} else {
+    // PoeticBoardOverlay.debugMessageLocal("Chess board element not found for Poetic Overlay.");
+    // или твоя глобальная debugMessage
+    debugMessage("ERROR: Chess board element not found for Poetic Overlay.");
+}
 
 function renderBoard() {
     // debugMessage("renderBoard called"); // Может быть слишком часто
