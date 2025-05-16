@@ -60,14 +60,7 @@ function initializeBoard() {
     blackRookQueensideMoved = false;
     enPassantTargetSquare = null;
     gameStatus = "ongoing";
-
-    renderBoard();
-    function initializeBoard() {
-    debugMessage("initializeBoard called");
-    // ... (весь твой код инициализации переменных) ...
-
     renderBoard(); // <--- Вот здесь доска отрисовалась с клетками
-
     // А вот теперь активируем поэтический оверлей!
     const chessBoardElement = document.getElementById('chessBoard');
     if (chessBoardElement) {
@@ -80,7 +73,6 @@ function initializeBoard() {
     } else {
         debugMessage("ОШИБКА: Элемент доски 'chessBoard' НЕ НАЙДЕН для PoeticBoardOverlay!");
     }
-    
     clearKingInCheckHighlight();
     updateInfoPanel("Игра началась. Ход Белых.");
 }
