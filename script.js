@@ -64,21 +64,23 @@ function initializeBoard() {
     renderBoard();
     clearKingInCheckHighlight();
     updateInfoPanel("Игра началась. Ход Белых.");
+    // Внутри initializeBoard()
     console.log('Доска инициализирована.');
-    const chessBoardElement = document.getElementById('chessBoard'); 
-    if (chessBoardElement) {
-    PoeticBoardOverlay.activate(chessBoardElement);
-    PoeticBoardOverlay.debugMessageLocal("Poetic Overlay Activated from main script!");
-    // Если хочешь использовать свои фразы:
-    // const myCustomPoetry = ["Думы мои, думы...", "Вперед, к победе!", "Семь раз отмерь..."];
-    // PoeticBoardOverlay.setPhrases(myCustomPoetry);
-    // PoeticBoardOverlay.activate(chessBoardElement); // Если фразы заданы до активации, можно и так
-    } catch (e) {
-        debugMessage("ОШИБКА при вызове PoeticBoardOverlay.activate(): " + e.message + " | Стек: " + (e.stack ? e.stack.substring(0,150) : "нет стека"));
-    }
-} else {
-    debugMessage("ОШИБКА: Элемент доски 'chessBoard' НЕ НАЙДЕН для PoeticBoardOverlay!");
-} 
+
+    const chessBoardElement = document.getElementById('chessBoard');
+    if (chessBoardElement) { // НАЧАЛО IF
+        try { // НАЧАЛО TRY ВНУТРИ IF
+            PoeticBoardOverlay.activate(chessBoardElement);
+            // Используй твою глобальную debugMessage, если PoeticBoardOverlay.js подключен и она там доступна
+            // PoeticBoardOverlay.debugMessageLocal("Poetic Overlay Activated from main script!"); 
+            debugMessage("Poetic Overlay Activated from main script!"); // Используем твою функцию
+        } catch (e) { // НАЧАЛО CATCH ВНУТРИ IF
+            debugMessage("ОШИБКА при вызове PoeticBoardOverlay.activate(): " + e.message + " | Стек: " + (e.stack ? e.stack.substring(0,150) : "нет стека"));
+        } // КОНЕЦ CATCH ВНУТРИ IF
+    } else { // НАЧАЛО ELSE, относящегося к if (chessBoardElement)
+        debugMessage("ОШИБКА: Элемент доски 'chessBoard' НЕ НАЙДЕН для PoeticBoardOverlay!");
+    } // КОНЕЦ ELSE
+// Конец initializeBoard()
 
 function renderBoard() {
     // debugMessage("renderBoard called"); // Может быть слишком часто
