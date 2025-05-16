@@ -566,3 +566,82 @@ document.addEventListener('DOMContentLoaded', () => {
 // selectedSquare = { row, col, piece: pieceCode };
 // possibleMoves = getPossibleMovesForPiece(row, col, pieceCode); // Новая функция
 // renderBoard(); // renderBoard теперь должна отрисовывать и 'selected' и 'possible-move' из массива possibleMoves
+
+// script.js
+
+// ... (весь остальной код script.js) ...
+
+function makeBotMove() {
+    const botColor = 'b'; // Или тот цвет, которым играет бот
+
+    if (currentPlayer !== botColor || gameStatus !== "ongoing") {
+        return;
+    }
+
+    // --- РЕФАКТОРИНГ ДЛЯ AI ---
+    // Для корректной работы AI, который может анализировать гипотетические доски,
+    // функции isValidMove и getAllLegalMoves должны принимать boardState и другие нужные параметры.
+    // Допустим, мы их модифицировали так:
+    // isValidMove(startRow, startCol, endRow, endCol, pieceCode, boardState, enPassantTarget, castlingFlags)
+    // getAllLegalMoves(playerColor, boardState, enPassantTarget, castlingFlags)
+
+    // Пока, для простоты, предположим, что ChessAI.getRandomMove может использовать
+    // глобальные функции isValidMove и getAllLegalMoves, которые, в свою очередь,
+    // используют глобальный currentBoardState. Это не идеально, но для начала сойдет.
+
+    // Передаем текущее состояние и нужные функции в AI
+    // Если isValidMove и getAllLegalMoves НЕ были рефакторены для принятия boardState,
+    // то ChessAI.getRandomMove должен будет как-то получить доступ к глобальным переменным,
+    // что делает его менее "чистым" модулем.
+    // Лучше передать функции как параметры:
+    const moveData = ChessAI.getRandomMove(
+        JSON.parse(JSON.stringify(currentBoardState)), // Передаем копию, чтобы AI не мог случайно изменить оригинал
+        botColor,
+        getAllLegalMoves, // Передаем саму функцию
+        isValidMove       // Передаем саму функцию
+        // Если isValidMove и getAllLegalMoves рефакторены, то также передаем:
+        // enPassantTargetSquare,
+        // { whiteKingMoved, blackKingMoved, ...etc }
+    );
+
+    if (moveData) {
+        // Сообщение в консоль для отладки
+        console.log(`AI (${PIECES[moveData.pieceCode]}) ходит: ${String.fromCharCode(97 + moveData.startCol)}${8 - moveData.startRow} -> ${String.fromCharCode(97 + moveData.endCol)}${8 - moveData.endRow}`);
+
+        movePiece(moveData.startRow, moveData.startCol, moveData.endRow, moveData.endCol, moveData.moveDetails);
+        // selectedSquare = null; // Это может быть не нужно, так как ход делает бот
+        // clearPossibleMovesHighlight(); // Тоже, вероятно, не нужно после хода бота
+
+        renderBoard(); // Перерисовать доску
+        switchPlayer(); // Переключить игрока и проверить статус игры
+    } else {
+        // Это значит, что getAllLegalMoves вернул пустой массив,
+        // и checkGameStatus, вызванный предыдущим switchPlayer, должен был уже определить мат/пат.
+        console.log("AI: Нет доступных ходов.");
+    }
+}
+
+// Вызов makeBotMove остается там же, где мы планировали:
+// в onSquareClick после switchPlayer(), если ход перешел к боту.
+// Например:
+// function onSquareClick(row, col) {
+//    // ... ваш код ...
+//    if (selectedSquare) {
+//        // ... логика хода игрока ...
+//        if (moveDetails) {
+//            // ...
+//            if (gameStatus === "ongoing") {
+//                switchPlayer(); // Переключает на бота
+//                if (currentPlayer === 'b' && gameStatus === "ongoing") { // 'b' - цвет бота
+//                    updateInfoPanel("Бот думает..."); // Сообщение для пользователя
+//                    setTimeout(() => {
+//                        makeBotMove();
+//                    }, 500); // Задержка для "размышлений"
+//                }
+//            }
+//            // ...
+//        }
+//        // ...
+//    }
+//    // ...
+// }
