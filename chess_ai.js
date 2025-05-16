@@ -1,5 +1,108 @@
-// --- Оценочная функция, учёт мата и пата ---
 function evaluateBoard(board, getAllLegalMovesFunc) {
+    // Материальная стоимость
+    const pieceValues = {
+        'wK': 0,   'wQ': 9,  'wR': 5,  'wB': 3,  'wN': 3,  'wP': 1,
+        'bK': 0,   'bQ': -9, 'bR': -5, 'bB': -3, 'bN': -3, 'bP': -1
+    };
+    let total = 0;
+    let wDevelopment = 0, bDevelopment = 0;
+    let wCastled = false, bCastled = false;
+    let wPawn7 = 0, bPawn2 = 0;
+    let wKingFile = -1, bKingFile = -1;
+    let wKingRow = -1, bKingRow = -1;
+    let wIsolatedPawns = 0, bIsolatedPawns = 0;
+    let wDoubledPawns = 0, bDoubledPawns = 0;
+    // Пешечные столбцы для поиска изолированных/двойных
+    const wPawnFiles = Array(8).fill(0);
+    const bPawnFiles = Array(8).fill(0);
+
+    // Центр: e4,d4,e5,d5 = [3][3],[3][4],[4][3],[4][4]
+    const centerSquares = [
+        [3, 3], [3, 4], [4, 3], [4, 4]
+    ];
+
+    for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+            const piece = board[r][c];
+            if (!piece) continue;
+            total += pieceValues[piece] || 0;
+
+            // Контроль центра
+            for (const [cr, cc] of centerSquares)
+                if (r === cr && c === cc)
+                    total += (piece[0] === 'w') ? 0.2 : -0.2;
+
+            // Развитие лёгких фигур
+            if (piece === 'wN' || piece === 'wB') {
+                if (r < 7) wDevelopment += 0.1; // выведена не на 1-ю горизонталь
+            }
+            if (piece === 'bN' || piece === 'bB') {
+                if (r > 0) bDevelopment -= 0.1;
+            }
+
+            // Пешки для анализа двойных/изолированных
+            if (piece === 'wP') {
+                wPawnFiles[c]++;
+                // Пешка на 7-й горизонтали (до превращения)
+                if (r === 1) wPawn7 += 0.2;
+            }
+            if (piece === 'bP') {
+                bPawnFiles[c]++;
+                // Пешка на 2-й горизонтали (до превращения)
+                if (r === 6) bPawn2 -= 0.2;
+            }
+
+            // Положение короля
+            if (piece === 'wK') {
+                wKingFile = c;
+                wKingRow = r;
+                // Рокировка (король на g1 или c1)
+                if ((r === 7 && (c === 6 || c === 2))) wCastled = true;
+            }
+            if (piece === 'bK') {
+                bKingFile = c;
+                bKingRow = r;
+                if ((r === 0 && (c === 6 || c === 2))) bCastled = true;
+            }
+        }
+    }
+
+    // Двойные и изолированные пешки
+    for (let f = 0; f < 8; f++) {
+        if (wPawnFiles[f] > 1) wDoubledPawns += wPawnFiles[f] - 1;
+        if (bPawnFiles[f] > 1) bDoubledPawns -= (bPawnFiles[f] - 1);
+        // Изолированные
+        if (wPawnFiles[f] > 0 && wPawnFiles[f-1] === 0 && wPawnFiles[f+1] === 0) wIsolatedPawns++;
+        if (bPawnFiles[f] > 0 && bPawnFiles[f-1] === 0 && bPawnFiles[f+1] === 0) bIsolatedPawns--;
+    }
+
+    // Штраф за открытого короля (нет пешек перед королём)
+    let wKingOpen = 0, bKingOpen = 0;
+    if (wKingRow === 7 && wKingFile !== -1) {
+        for (let dc = -1; dc <= 1; dc++) {
+            const c = wKingFile + dc;
+            if (c >= 0 && c < 8 && board[6][c] !== 'wP') wKingOpen -= 0.15;
+        }
+    }
+    if (bKingRow === 0 && bKingFile !== -1) {
+        for (let dc = -1; dc <= 1; dc++) {
+            const c = bKingFile + dc;
+            if (c >= 0 && c < 8 && board[1][c] !== 'bP') bKingOpen += 0.15;
+        }
+    }
+
+    // Суммируем всё
+    total += wDevelopment + bDevelopment;
+    total += wCastled ? 0.2 : 0;
+    total += bCastled ? -0.2 : 0;
+    total += wPawn7 + bPawn2;
+    total -= wDoubledPawns * 0.15;
+    total -= bDoubledPawns * 0.15;
+    total -= wIsolatedPawns * 0.1;
+    total -= bIsolatedPawns * 0.1;
+    total += wKingOpen + bKingOpen;
+
+    // Мат/пат
     const botColor = 'b';
     const humanColor = 'w';
     const botMoves = getAllLegalMovesFunc(botColor, board);
@@ -13,120 +116,5 @@ function evaluateBoard(board, getAllLegalMovesFunc) {
         if (isKingInCheck(humanColor, board)) return 10000; // Мат человеку
         else return 0; // Пат
     }
-    // Материальная оценка
-    const pieceValues = {
-        'wK': 0, 'wQ': 9, 'wR': 5, 'wB': 3, 'wN': 3, 'wP': 1,
-        'bK': 0, 'bQ': -9, 'bR': -5, 'bB': -3, 'bN': -3, 'bP': -1
-    };
-    let total = 0;
-    for (let row of board) {
-        for (let piece of row) {
-            if (piece) total += pieceValues[piece] || 0;
-        }
-    }
     return total;
 }
-
-function cloneBoard(board) {
-    return board.map(row => row.slice());
-}
-
-function makeMove(board, move) {
-    const newBoard = cloneBoard(board);
-    newBoard[move.to.tr][move.to.tc] = newBoard[move.from.r][move.from.c];
-    newBoard[move.from.r][move.from.c] = '';
-    return newBoard;
-}
-
-// Move ordering: сначала взятия, потом остальные
-function orderMoves(moves) {
-    // Ходы с details.type === 'capture' или 'en_passant' идут первыми
-    return moves.slice().sort((a, b) => {
-        const aIsCapture = a.details && (a.details.type === 'capture' || a.details.type === 'en_passant');
-        const bIsCapture = b.details && (b.details.type === 'capture' || b.details.type === 'en_passant');
-        if (aIsCapture && !bIsCapture) return -1;
-        if (!aIsCapture && bIsCapture) return 1;
-        return 0;
-    });
-}
-
-// Проверка, даёт ли ход шах/мат
-function isCheckOrMateMove(move, board, getAllLegalMovesFunc, opponentColor) {
-    const tempBoard = makeMove(board, move);
-    return isKingInCheck(opponentColor, tempBoard);
-}
-
-// --- Минимакс с альфа-бета, move ordering и гарантией поиска шахов/матов ---
-function minimaxAlphaBeta(board, depth, alpha, beta, maximizingPlayer, getAllLegalMovesFunc) {
-    const currentColor = maximizingPlayer ? 'w' : 'b';
-    const opponentColor = maximizingPlayer ? 'b' : 'w';
-    let moves = getAllLegalMovesFunc(currentColor, board);
-    moves = orderMoves(moves);
-
-    // Всегда добавить все ходы, дающие шах/мат, даже если их больше 3!
-    const checkMoves = moves.filter(m => isCheckOrMateMove(m, board, getAllLegalMovesFunc, opponentColor));
-    const nonCheckMoves = moves.filter(m => !isCheckOrMateMove(m, board, getAllLegalMovesFunc, opponentColor));
-    // top-3 обычных + все шахи/маты
-    const topMoves = nonCheckMoves.slice(0, 3).concat(checkMoves);
-    // удаляем дубли
-    const uniqueMoves = [];
-    const seen = new Set();
-    for (const move of topMoves) {
-        // Сериализуем ход для сравнения (можно по from/to)
-        const key = `${move.from.r},${move.from.c},${move.to.tr},${move.to.tc}`;
-        if (!seen.has(key)) {
-            uniqueMoves.push(move);
-            seen.add(key);
-        }
-    }
-
-    if (depth === 0 || uniqueMoves.length === 0) {
-        return { value: evaluateBoard(board, getAllLegalMovesFunc) };
-    }
-
-    let bestMove = null;
-    if (maximizingPlayer) {
-        let maxEval = -Infinity;
-        for (let move of uniqueMoves) {
-            const newBoard = makeMove(board, move);
-            const evalResult = minimaxAlphaBeta(newBoard, depth - 1, alpha, beta, false, getAllLegalMovesFunc);
-            if (evalResult.value > maxEval) {
-                maxEval = evalResult.value;
-                bestMove = move;
-            }
-            alpha = Math.max(alpha, evalResult.value);
-            if (beta <= alpha) break;
-        }
-        return { value: maxEval, move: bestMove };
-    } else {
-        let minEval = Infinity;
-        for (let move of uniqueMoves) {
-            const newBoard = makeMove(board, move);
-            const evalResult = minimaxAlphaBeta(newBoard, depth - 1, alpha, beta, true, getAllLegalMovesFunc);
-            if (evalResult.value < minEval) {
-                minEval = evalResult.value;
-                bestMove = move;
-            }
-            beta = Math.min(beta, evalResult.value);
-            if (beta <= alpha) break;
-        }
-        return { value: minEval, move: bestMove };
-    }
-}
-
-// --- Основной AI-интерфейс ---
-const ChessAI = {
-    getSmartMove: function(boardStateFromGame, playerColor, getAllLegalMovesFunc) {
-        const depth = 3;
-        const maximizingPlayer = (playerColor === 'w');
-        const result = minimaxAlphaBeta(
-            boardStateFromGame,
-            depth,
-            -Infinity,
-            Infinity,
-            maximizingPlayer,
-            getAllLegalMovesFunc
-        );
-        return result.move;
-    }
-};
