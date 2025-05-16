@@ -113,7 +113,6 @@ function onSquareClick(row, col) {
 }
 
 function isValidMove(startRow, startCol, endRow, endCol) {
-function isValidMove(startRow, startCol, endRow, endCol) {
     const piece = currentBoardState[startRow][startCol];
     const targetPiece = currentBoardState[endRow][endCol];
 
