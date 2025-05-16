@@ -113,42 +113,73 @@ function onSquareClick(row, col) {
 }
 
 function isValidMove(startRow, startCol, endRow, endCol) {
-    // ЗАГЛУШКА: Пока любой ход на пустую клетку или на вражескую считается валидным
-    // В будущем здесь будет сложная логика проверки ходов для каждой фигуры
+function isValidMove(startRow, startCol, endRow, endCol) {
     const piece = currentBoardState[startRow][startCol];
     const targetPiece = currentBoardState[endRow][endCol];
 
     if (!piece) return false; // Нельзя ходить пустой клеткой
+    if (startRow === endRow && startCol === endCol) return false; // Нельзя ходить на ту же клетку
 
     // Нельзя ходить на клетку со своей фигурой
     if (targetPiece && targetPiece.startsWith(piece[0])) { // piece[0] - 'w' или 'b'
         return false;
     }
-    
-    // Проверка для пешки (очень упрощенная, только вперед на 1 или 2 с начальной)
-    if (piece.endsWith('P')) { // 'wP' или 'bP'
-        const direction = piece.startsWith('w') ? -1 : 1; // Белые вверх (-1), черные вниз (+1)
-        const startRank = piece.startsWith('w') ? 6 : 1;
 
-        // Ход на одну клетку вперед
-        if (endCol === startCol && endRow === startRow + direction && !targetPiece) {
-            return true;
-        }
-        // Ход на две клетки вперед с начальной позиции
-        if (endCol === startCol && startRow === startRank && endRow === startRow + 2 * direction && !targetPiece && !currentBoardState[startRow + direction][startCol]) {
-            return true;
-        }
-        // Взятие по диагонали
-        if (Math.abs(endCol - startCol) === 1 && endRow === startRow + direction && targetPiece && !targetPiece.startsWith(piece[0])) {
-            return true;
-        }
-        return false; // Другие ходы пешкой пока не реализованы
+    const pieceType = piece.substring(1); // 'P', 'R', 'N', 'B', 'Q', 'K'
+    const pieceColor = piece[0]; // 'w' или 'b'
+
+    switch (pieceType) {
+        case 'P': // Пешка
+            const direction = (pieceColor === 'w') ? -1 : 1; // -1 для белых (вверх), +1 для черных (вниз)
+            const initialRow = (pieceColor === 'w') ? 6 : 1;
+
+            // Обычный ход на одну клетку вперед
+            if (endCol === startCol && endRow === startRow + direction && !targetPiece) {
+                return true;
+            }
+            // Первый ход на две клетки вперед
+            if (endCol === startCol && startRow === initialRow && endRow === startRow + 2 * direction && !targetPiece && !currentBoardState[startRow + direction][startCol]) {
+                return true;
+            }
+            // Взятие по диагонали
+            if (Math.abs(endCol - startCol) === 1 && endRow === startRow + direction && targetPiece && !targetPiece.startsWith(pieceColor)) {
+                return true;
+            }
+            // TODO: Взятие на проходе (En Passant)
+            // TODO: Превращение пешки
+            return false; // Если ни одно из правил пешки не сработало
+
+        case 'R': // Ладья (Rook)
+            // TODO: Логика для Ладьи
+            console.warn(`Логика ходов для Ладьи еще не реализована!`);
+            return (startRow === endRow || startCol === endCol); // Заглушка: по прямой
+
+        case 'N': // Конь (Knight)
+            // TODO: Логика для Коня
+            console.warn(`Логика ходов для Коня еще не реализована!`);
+            const dRow = Math.abs(endRow - startRow);
+            const dCol = Math.abs(endCol - startCol);
+            return (dRow === 2 && dCol === 1) || (dRow === 1 && dCol === 2); // Заглушка: буквой Г
+
+        case 'B': // Слон (Bishop)
+            // TODO: Логика для Слона
+            console.warn(`Логика ходов для Слона еще не реализована!`);
+            return (Math.abs(endRow - startRow) === Math.abs(endCol - startCol)); // Заглушка: по диагонали
+
+        case 'Q': // Ферзь (Queen)
+            // TODO: Логика для Ферзя
+            console.warn(`Логика ходов для Ферзя еще не реализована!`);
+            return (startRow === endRow || startCol === endCol || Math.abs(endRow - startRow) === Math.abs(endCol - startCol)); // Заглушка: как ладья + слон
+
+        case 'K': // Король (King)
+            // TODO: Логика для Короля
+            console.warn(`Логика ходов для Короля еще не реализована!`);
+            return (Math.abs(endRow - startRow) <= 1 && Math.abs(endCol - startCol) <= 1); // Заглушка: на 1 клетку
+            // TODO: Рокировка
+        
+        default:
+            return false; // Неизвестный тип фигуры
     }
-
-    // ЗАГЛУШКА: Для остальных фигур пока разрешаем любой ход (кроме на свои)
-    // Это нужно будет заменить реальной логикой!
-    console.warn(`Логика ходов для ${PIECES[piece]} еще не полностью реализована!`);
-    return true; // Временное разрешение
 }
 
 function highlightPossibleMoves(row, col, pieceCode) {
