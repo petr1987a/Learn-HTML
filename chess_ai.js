@@ -1,9 +1,13 @@
-// ChessAI with parallel calculation, time-limited processing, and optimized worker pool
-
 const ChessAI = {
     getSmartMove: function(boardStateFromGame, playerColor, getAllLegalMovesFunc, isKingInCheckFunc) {
         return new Promise((resolve, reject) => {
             const moves = getAllLegalMovesFunc(playerColor, boardStateFromGame);
+
+            if (moves.length === 0) {
+                console.error("Нет доступных ходов для бота!");
+                resolve(null);
+                return;
+            }
 
             // --- Worker code as string ---
             const workerCode = `
@@ -71,6 +75,7 @@ const ChessAI = {
 
             // --- Move ordering ---
             function orderMoves(moves) {
+                console.log("Сортировка ходов:", moves);
                 return moves.slice().sort((a, b) => {
                     const aCaptureValue = a.details && a.details.type === 'capture' ? getPieceValue(a.capturedPiece) : 0;
                     const bCaptureValue = b.details && b.details.type === 'capture' ? getPieceValue(b.capturedPiece) : 0;
@@ -85,6 +90,12 @@ const ChessAI = {
             }
 
             const orderedMoves = orderMoves(moves);
+
+            if (orderedMoves.length === 0) {
+                console.error("Сортировка вернула пустой массив!");
+                resolve(null);
+                return;
+            }
 
             // --- Worker Pool Optimization ---
             const workerPool = [];
@@ -108,16 +119,18 @@ const ChessAI = {
                         }
                     }, WORKER_TIMEOUT);
 
+                    console.log(`Запуск воркера для хода: ${JSON.stringify(orderedMoves[index])}`);
                     worker.postMessage({
                         board: boardStateFromGame,
                         playerColor,
                         move: orderedMoves[index],
                         getAllLegalMovesStr,
                         isKingInCheckStr,
-                        depth: 2 // Reduced depth for faster calculation
+                        depth: 2 // Глубина оставлена равной 2
                     });
 
                     worker.onmessage = function(e) {
+                        console.log(`Результат воркера: ${JSON.stringify(e.data)}`);
                         clearTimeout(timeoutId);
                         results.push(e.data);
                         finished++;
@@ -125,11 +138,13 @@ const ChessAI = {
 
                         if (finished === orderedMoves.length) {
                             results.sort((a, b) => playerColor === 'w' ? b.value - a.value : a.value - b.value);
+                            console.log(`Отсортированные результаты: ${JSON.stringify(results)}`);
                             resolve(results[0].move);
                         }
                     };
 
                     worker.onerror = function(err) {
+                        console.error("Ошибка воркера:", err);
                         finished++;
                         worker.terminate();
 
