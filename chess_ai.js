@@ -1,7 +1,23 @@
-function evaluateBoard(board) {
+function evaluateBoard(board, getAllLegalMovesFunc) {
+    // Если мат — огромный штраф/бонус
+    const botColor = 'b';
+    const humanColor = 'w';
+    const botMoves = getAllLegalMovesFunc(botColor, board);
+    const humanMoves = getAllLegalMovesFunc(humanColor, board);
+
+    if (botMoves.length === 0) {
+        // Проверяем, в шаху ли бот
+        if (isKingInCheck(botColor, board)) return -10000; // Мат боту
+        else return 0; // Пат
+    }
+    if (humanMoves.length === 0) {
+        if (isKingInCheck(humanColor, board)) return 10000; // Мат человеку
+        else return 0; // Пат
+    }
+    // Обычная оценка материала
     const pieceValues = {
-        'wK': 1000, 'wQ': 9, 'wR': 5, 'wB': 3, 'wN': 3, 'wP': 1,
-        'bK': -1000, 'bQ': -9, 'bR': -5, 'bB': -3, 'bN': -3, 'bP': -1
+        'wK': 0, 'wQ': 9, 'wR': 5, 'wB': 3, 'wN': 3, 'wP': 1,
+        'bK': 0, 'bQ': -9, 'bR': -5, 'bB': -3, 'bN': -3, 'bP': -1
     };
     let total = 0;
     for (let row of board) {
@@ -23,57 +39,46 @@ function makeMove(board, move) {
     return newBoard;
 }
 
-function findBestMove(board, playerColor, getAllLegalMovesFunc) {
-    const moves = getAllLegalMovesFunc(playerColor, board);
-    let bestScore = playerColor === 'w' ? -Infinity : Infinity;
-    let bestMove = null;
+function minimax(board, depth, maximizingPlayer, getAllLegalMovesFunc) {
+    // maximizingPlayer: true — за человека (w), false — за бота (b)
+    const currentColor = maximizingPlayer ? 'w' : 'b';
+    const moves = getAllLegalMovesFunc(currentColor, board);
 
-    for (const move of moves) {
-        const simulatedBoard = makeMove(board, move);
-        const opponent = playerColor === 'w' ? 'b' : 'w';
-        const opponentMoves = getAllLegalMovesFunc(opponent, simulatedBoard);
-
-        if (opponentMoves.length === 0) {
-            const score = evaluateBoard(simulatedBoard);
-            if ((playerColor === 'w' && score > bestScore) ||
-                (playerColor === 'b' && score < bestScore)) {
-                bestScore = score;
-                bestMove = move;
-            }
-            continue;
-        }
-
-        let worstScore = playerColor === 'w' ? Infinity : -Infinity;
-        for (const oppMove of opponentMoves) {
-            const oppBoard = makeMove(simulatedBoard, oppMove);
-            const score = evaluateBoard(oppBoard);
-            if (playerColor === 'w') {
-                if (score < worstScore) worstScore = score;
-            } else {
-                if (score > worstScore) worstScore = score;
-            }
-        }
-        if ((playerColor === 'w' && worstScore > bestScore) ||
-            (playerColor === 'b' && worstScore < bestScore)) {
-            bestScore = worstScore;
-            bestMove = move;
-        }
+    if (depth === 0 || moves.length === 0) {
+        return { value: evaluateBoard(board, getAllLegalMovesFunc) };
     }
 
-    // Логируем результат для отладки
-    console.log("AI bestMove:", bestMove);
+    let bestValue = maximizingPlayer ? -Infinity : Infinity;
+    let bestMove = null;
 
-    // Если нет ни одного хода (пат/мат) — вернуть null
-    return bestMove ? {
-        from: { r: bestMove.from.r, c: bestMove.from.c },
-        to: { tr: bestMove.to.tr, tc: bestMove.to.tc },
-        pieceCode: bestMove.pieceCode,
-        details: bestMove.details
-    } : null;
+    for (let move of moves) {
+        const newBoard = makeMove(board, move);
+        const evalResult = minimax(newBoard, depth - 1, !maximizingPlayer, getAllLegalMovesFunc);
+
+        if (maximizingPlayer) {
+            if (evalResult.value > bestValue) {
+                bestValue = evalResult.value;
+                bestMove = move;
+            }
+        } else {
+            if (evalResult.value < bestValue) {
+                bestValue = evalResult.value;
+                bestMove = move;
+            }
+        }
+    }
+    return { value: bestValue, move: bestMove };
 }
 
+// API для игры
 const ChessAI = {
     getSmartMove: function(boardStateFromGame, playerColor, getAllLegalMovesFunc) {
-        return findBestMove(boardStateFromGame, playerColor, getAllLegalMovesFunc);
+        // Достаточно глубины 3 или 4, если хотите не пропускать мат в 1
+        // (для браузера — 3, иначе может тормозить)
+        const depth = 3;
+        // maximizingPlayer: true если playerColor === 'w', иначе false
+        const maximizingPlayer = (playerColor === 'w');
+        const result = minimax(boardStateFromGame, depth, maximizingPlayer, getAllLegalMovesFunc);
+        return result.move;
     }
 };
