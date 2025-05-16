@@ -1,4 +1,4 @@
-// ChessAI WITHOUT web workers: sync, depth-limited, and explicit boardSize argument
+// ChessAI: чисто синхронный минимакс без воркеров
 
 const ChessAI = {
     getSmartMove: function(boardStateFromGame, playerColor, getAllLegalMovesFunc, isKingInCheckFunc) {
@@ -6,7 +6,7 @@ const ChessAI = {
             const boardSize = 8;
             const moves = getAllLegalMovesFunc(playerColor, boardStateFromGame, boardSize);
 
-            if (moves.length === 0) {
+            if (!moves || moves.length === 0) {
                 console.error("Нет доступных ходов для бота!");
                 resolve(null);
                 return;
@@ -38,7 +38,12 @@ const ChessAI = {
                 const moves = getAllLegalMovesFunc(currentColor, board, boardSize);
 
                 if (moves.length === 0) {
-                    return { value: maximizingPlayer ? -10000 : 10000 };
+                    // Мат или пат
+                    if (isKingInCheckFunc(currentColor, board, boardSize)) {
+                        return { value: maximizingPlayer ? -10000 : 10000 };
+                    } else {
+                        return { value: 0 };
+                    }
                 }
 
                 let bestValue = maximizingPlayer ? -Infinity : Infinity;
@@ -70,10 +75,10 @@ const ChessAI = {
             }
             const orderedMoves = orderMoves(moves);
 
-            // Synchronous minimax for all possible moves:
+            // Синхронно считаем минимакс для всех ходов
             let bestMove = null;
             let bestValue = playerColor === 'w' ? -Infinity : Infinity;
-            const depth = 2; // Keep 2-ply for speed
+            const depth = 2; // Глубина поиска
 
             for (const move of orderedMoves) {
                 const newBoard = makeMove(boardStateFromGame, move);
