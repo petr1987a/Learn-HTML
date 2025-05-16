@@ -50,11 +50,11 @@ function orderMoves(moves) {
     });
 }
 
-// --- Минимакс с альфа-бета и move ordering ---
+// --- Минимакс с альфа-бета и move ordering, top-3 хода ---
 function minimaxAlphaBeta(board, depth, alpha, beta, maximizingPlayer, getAllLegalMovesFunc) {
     const currentColor = maximizingPlayer ? 'w' : 'b';
     let moves = getAllLegalMovesFunc(currentColor, board);
-    moves = orderMoves(moves);
+    moves = orderMoves(moves).slice(0, 3); // <= Ограничение: только 3 лучших хода
 
     if (depth === 0 || moves.length === 0) {
         return { value: evaluateBoard(board, getAllLegalMovesFunc) };
