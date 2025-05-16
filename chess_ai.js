@@ -1,7 +1,10 @@
+// ChessAI with parallel calculation, time-limited processing, and explicit boardSize argument
+
 const ChessAI = {
     getSmartMove: function(boardStateFromGame, playerColor, getAllLegalMovesFunc, isKingInCheckFunc) {
         return new Promise((resolve, reject) => {
-            const moves = getAllLegalMovesFunc(playerColor, boardStateFromGame);
+            const boardSize = 8;
+            const moves = getAllLegalMovesFunc(playerColor, boardStateFromGame, boardSize);
 
             if (moves.length === 0) {
                 console.error("Нет доступных ходов для бота!");
@@ -39,7 +42,7 @@ const ChessAI = {
                             return { value: evaluateBoard(board) };
                         }
                         const currentColor = maximizingPlayer ? 'w' : 'b';
-                        const moves = getAllLegalMovesFunc(currentColor, board);
+                        const moves = getAllLegalMovesFunc(currentColor, board, boardSize);
 
                         if (moves.length === 0) {
                             return { value: maximizingPlayer ? -10000 : 10000 };
@@ -70,17 +73,23 @@ const ChessAI = {
             const workerBlob = new Blob([workerCode], { type: "application/javascript" });
             const workerURL = URL.createObjectURL(workerBlob);
 
-            const getAllLegalMovesStr = getAllLegalMovesFunc.toString();
-            const isKingInCheckStr = isKingInCheckFunc.toString();
+            // Оборачиваем getAllLegalMoves и isKingInCheck в функции с boardSize!
+            function getAllLegalMovesWithSize(playerColor, board, boardSize) {
+                return getAllLegalMovesFunc(playerColor, board, boardSize);
+            }
+            function isKingInCheckWithSize(kingColor, board, boardSize) {
+                return isKingInCheckFunc(kingColor, board, boardSize);
+            }
+
+            const getAllLegalMovesStr = getAllLegalMovesWithSize.toString();
+            const isKingInCheckStr = isKingInCheckWithSize.toString();
 
             // --- Move ordering ---
             function orderMoves(moves) {
-                console.log("Сортировка ходов:", moves);
                 return moves.slice().sort((a, b) => {
                     const aCaptureValue = a.details && a.details.type === 'capture' ? getPieceValue(a.capturedPiece) : 0;
                     const bCaptureValue = b.details && b.details.type === 'capture' ? getPieceValue(b.capturedPiece) : 0;
-
-                    return bCaptureValue - aCaptureValue; // Higher captures first
+                    return bCaptureValue - aCaptureValue;
                 });
             }
 
@@ -97,7 +106,6 @@ const ChessAI = {
                 return;
             }
 
-            // --- Worker Pool Optimization ---
             const workerPool = [];
             const maxWorkers = Math.min(4, navigator.hardwareConcurrency || 2);
             for (let i = 0; i < maxWorkers; i++) {
@@ -106,8 +114,7 @@ const ChessAI = {
 
             let finished = 0;
             const results = [];
-            const WORKER_TIMEOUT = 10000; // 10 seconds timeout
-            const boardSize = 8; // Передаём размер доски явно
+            const WORKER_TIMEOUT = 10000;
 
             workerPool.forEach((worker, index) => {
                 if (index < orderedMoves.length) {
@@ -120,19 +127,17 @@ const ChessAI = {
                         }
                     }, WORKER_TIMEOUT);
 
-                    console.log(`Запуск воркера для хода: ${JSON.stringify(orderedMoves[index])}`);
                     worker.postMessage({
                         board: boardStateFromGame,
                         playerColor,
                         move: orderedMoves[index],
                         getAllLegalMovesStr,
                         isKingInCheckStr,
-                        depth: 2, // Глубина оставлена равной 2
-                        boardSize // <-- теперь передаётся в воркер!
+                        depth: 2,
+                        boardSize // <-- теперь всегда есть в воркере!
                     });
 
                     worker.onmessage = function(e) {
-                        console.log(`Результат воркера: ${JSON.stringify(e.data)}`);
                         clearTimeout(timeoutId);
                         results.push(e.data);
                         finished++;
@@ -140,7 +145,6 @@ const ChessAI = {
 
                         if (finished === orderedMoves.length) {
                             results.sort((a, b) => playerColor === 'w' ? b.value - a.value : a.value - b.value);
-                            console.log(`Отсортированные результаты: ${JSON.stringify(results)}`);
                             resolve(results[0].move);
                         }
                     };
