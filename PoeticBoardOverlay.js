@@ -1,22 +1,18 @@
 // PoeticBoardOverlay.js
-// Модуль для создания эффекта "Живой Доски Слов"
+// Модуль для создания эффекта "Живой Доски Слов" с Tooltip
 
 const PoeticBoardOverlay = (function() {
 
-    let isActive = false; // Флаг активности модуля
-    let boardElement = null; // Ссылка на DOM-элемент доски
-    let poeticPhrases = []; // Массив поэтических фраз
-    let cellPhraseMap = new Map(); // Карта для связи клетки (row-col) с фразой
+    let isActive = false;
+    let boardElement = null;
+    let poeticPhrases = [];
+    let cellPhraseMap = new Map();
+    let tooltipElement = null; // Наш новый элемент для тултипа
 
     // --- НАСТРОЙКИ (можно вынести вовне или расширить) ---
     const settings = {
-        phraseDisplayDuration: 3000, // мс, как долго фраза видна после увода мыши (0 - сразу убирать)
-        fadeInDuration: '0.5s',      // Длительность появления
-        fadeOutDuration: '0.3s',     // Длительность исчезания
-        defaultFontSize: '12px',     // Размер шрифта по умолчанию
-        defaultFontColor: '#C0C0C0', // Цвет шрифта (серебристый, для примера)
-        defaultFontFamily: "'Times New Roman', Times, serif", // Поэтичный шрифт
-        maxCharsPerCell: 40,         // Максимальное кол-во символов для отображения на клетке
+        // Настройки для фраз и модуля (если нужны)
+        // maxCharsPerCell больше не актуален для тултипа
     };
 
     // --- ПОЭТИЧЕСКИЕ ФРАЗЫ (ПРИМЕРЫ) ---
@@ -47,31 +43,54 @@ const PoeticBoardOverlay = (function() {
 
     // --- ЛОКАЛЬНАЯ ФУНКЦИЯ ДЛЯ ОТЛАДКИ ВНУТРИ МОДУЛЯ ---
     function debugMessageLocal(msg) {
-        console.log("PBO_DEBUG: " + msg);
-        // При желании, можно добавить вывод в специальный debug-div на странице,
-        // если он будет доступен из этого модуля (например, через глобальную переменную или переданный элемент)
+        // Оставим для отладки самого модуля, если нужно
+        // console.log("PBO_DEBUG: " + msg);
+    }
+
+    // --- СОЗДАНИЕ ЭЛЕМЕНТА ТУЛТИПА ---
+    function createTooltip() {
+        if (tooltipElement) return; // Уже создан
+
+        tooltipElement = document.createElement('div');
+        tooltipElement.id = 'poeticTooltip'; // Дадим ID для стилизации и поиска
+        tooltipElement.style.position = 'fixed'; // Позиционирование относительно окна браузера
+        tooltipElement.style.display = 'none';   // Скрыт по умолчанию
+        tooltipElement.style.padding = '8px 12px';
+        tooltipElement.style.backgroundColor = 'rgba(44, 62, 80, 0.9)'; // Темно-синий полупрозрачный
+        tooltipElement.style.color = '#ecf0f1'; // Светлый текст
+        tooltipElement.style.borderRadius = '5px';
+        tooltipElement.style.boxShadow = '0 2px 10px rgba(0,0,0,0.3)';
+        tooltipElement.style.fontFamily = "'Times New Roman', Times, serif";
+        tooltipElement.style.fontSize = '14px';
+        tooltipElement.style.lineHeight = '1.4';
+        tooltipElement.style.pointerEvents = 'none'; // Чтобы не перехватывал события мыши
+        tooltipElement.style.zIndex = '1001'; // Поверх других элементов доски
+        tooltipElement.style.maxWidth = '300px'; // Ограничим ширину
+        tooltipElement.style.whiteSpace = 'normal'; // Разрешим перенос строк
+        document.body.appendChild(tooltipElement);
+        debugMessageLocal("Tooltip element created and appended to body.");
     }
 
     // --- ИНИЦИАЛИЗАЦИЯ МОДУЛЯ ---
     function init(boardDomElement, customPhrases = null) {
         if (!boardDomElement) {
-            console.error("[PoeticBoardOverlay] Board element not provided!"); // Оставим console.error для критических ошибок
-            debugMessageLocal("ERROR: Board element not provided for PoeticBoardOverlay initialization!");
+            console.error("[PoeticBoardOverlay] Board element not provided!");
             return;
         }
         boardElement = boardDomElement;
         poeticPhrases = customPhrases || samplePhrases;
 
+        createTooltip(); // Создаем тултип при инициализации
         assignPhrasesToCells();
         attachEventListeners();
         isActive = true;
-        debugMessageLocal("PoeticBoardOverlay Initialized and active.");
+        debugMessageLocal("PoeticBoardOverlay Initialized and active. Tooltip ready.");
     }
 
     // --- ПРИВЯЗКА ФРАЗ К КЛЕТКАМ ---
     function assignPhrasesToCells() {
         cellPhraseMap.clear();
-        if (!boardElement) { // Добавим проверку на существование boardElement
+        if (!boardElement) {
             debugMessageLocal("Cannot assign phrases: boardElement is null.");
             return;
         }
@@ -80,7 +99,6 @@ const PoeticBoardOverlay = (function() {
             debugMessageLocal("No squares found on the board to assign phrases.");
             return;
         }
-
         squares.forEach(square => {
             const row = square.dataset.row;
             const col = square.dataset.col;
@@ -96,18 +114,46 @@ const PoeticBoardOverlay = (function() {
     // --- ОБРАБОТЧИКИ СОБЫТИЙ ---
     function attachEventListeners() {
         if (!boardElement) return;
-        boardElement.addEventListener('mouseover', handleMouseOver);
-        boardElement.addEventListener('mouseout', handleMouseOut);
+        // Используем 'mousemove' на доске для более плавного позиционирования тултипа
+        boardElement.addEventListener('mousemove', handleMouseMove);
+        boardElement.addEventListener('mouseover', handleMouseOverCell); // Для показа
+        boardElement.addEventListener('mouseout', handleMouseOutCell);   // Для скрытия
     }
 
     function detachEventListeners() {
         if (!boardElement) return;
-        boardElement.removeEventListener('mouseover', handleMouseOver);
-        boardElement.removeEventListener('mouseout', handleMouseOut);
+        boardElement.removeEventListener('mousemove', handleMouseMove);
+        boardElement.removeEventListener('mouseover', handleMouseOverCell);
+        boardElement.removeEventListener('mouseout', handleMouseOutCell);
     }
 
-    function handleMouseOver(event) {
-        if (!isActive) return;
+    function handleMouseMove(event) {
+        if (!isActive || !tooltipElement || tooltipElement.style.display === 'none') return;
+        // Обновляем позицию тултипа относительно курсора
+        // Добавим небольшое смещение, чтобы курсор не перекрывал тултип
+        const offsetX = 15;
+        const offsetY = 15;
+        let x = event.pageX + offsetX;
+        let y = event.pageY + offsetY;
+
+        // Проверка, чтобы тултип не вылезал за пределы экрана
+        const screenWidth = window.innerWidth;
+        const screenHeight = window.innerHeight;
+        const tooltipRect = tooltipElement.getBoundingClientRect(); // Получаем реальные размеры тултипа
+
+        if (x + tooltipRect.width > screenWidth) {
+            x = event.pageX - tooltipRect.width - offsetX; // Перемещаем влево от курсора
+        }
+        if (y + tooltipRect.height > screenHeight) {
+            y = event.pageY - tooltipRect.height - offsetY; // Перемещаем вверх от курсора
+        }
+        
+        tooltipElement.style.left = x + 'px';
+        tooltipElement.style.top = y + 'px';
+    }
+
+    function handleMouseOverCell(event) {
+        if (!isActive || !tooltipElement) return;
         const targetSquare = event.target.closest('.square');
         if (targetSquare) {
             const row = targetSquare.dataset.row;
@@ -116,71 +162,36 @@ const PoeticBoardOverlay = (function() {
                 const cellKey = `${row}-${col}`;
                 const phrase = cellPhraseMap.get(cellKey);
                 if (phrase) {
-                    displayPhraseOnSquare(targetSquare, phrase);
+                    tooltipElement.innerHTML = phrase; // Используем innerHTML, если фразы могут содержать HTML (например, <br>)
+                                                      // Если только текст, то textContent безопаснее.
+                    tooltipElement.style.display = 'block';
+                    // Начальное позиционирование, handleMouseMove догонит
+                    handleMouseMove(event);
+                } else {
+                    tooltipElement.style.display = 'none'; // Если для клетки нет фразы
                 }
             }
         }
     }
 
-    function handleMouseOut(event) {
-        if (!isActive) return;
+    function handleMouseOutCell(event) {
+        if (!isActive || !tooltipElement) return;
         const targetSquare = event.target.closest('.square');
-        if (targetSquare) {
-            removePhraseFromSquare(targetSquare);
+        // Прячем тултип, если мышь ушла с клетки ИЛИ ушла с доски вообще
+        // relatedTarget помогает понять, куда ушла мышь
+        if (targetSquare && (!event.relatedTarget || !boardElement.contains(event.relatedTarget))) {
+             tooltipElement.style.display = 'none';
+        } else if (targetSquare && event.relatedTarget && !event.relatedTarget.closest('.square')) {
+            // Если ушли с клетки на другой элемент доски, не являющийся клеткой
+            tooltipElement.style.display = 'none';
         }
+         // Если мышь просто перешла на другую клетку, handleMouseOverCell для новой клетки сработает
+         // и обновит/покажет тултип.
     }
-
-    // --- ОТОБРАЖЕНИЕ ФРАЗЫ НА КЛЕТКЕ ---
-    function displayPhraseOnSquare(squareElement, phrase) {
-        const existingOverlay = squareElement.querySelector('.poetic-overlay');
-        if (existingOverlay) {
-            existingOverlay.remove();
-        }
-
-        const overlay = document.createElement('div');
-        overlay.className = 'poetic-overlay';
-        overlay.style.position = 'absolute';
-        overlay.style.top = '50%';
-        overlay.style.left = '50%';
-        overlay.style.transform = 'translate(-50%, -50%)';
-        overlay.style.textAlign = 'center';
-        overlay.style.pointerEvents = 'none';
-        overlay.style.opacity = '0';
-        overlay.style.transition = `opacity ${settings.fadeInDuration} ease-in-out`;
-        overlay.style.fontFamily = settings.defaultFontFamily;
-        overlay.style.fontSize = settings.defaultFontSize;
-        overlay.style.color = settings.defaultFontColor;
-        overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
-        overlay.style.padding = '2px 5px';
-        overlay.style.borderRadius = '3px';
-        overlay.style.whiteSpace = 'nowrap';
-        overlay.style.overflow = 'hidden';
-        overlay.style.textOverflow = 'ellipsis';
-        overlay.style.maxWidth = '90%';
-        overlay.textContent = phrase.length > settings.maxCharsPerCell ?
-                              phrase.substring(0, settings.maxCharsPerCell - 3) + "..." :
-                              phrase;
-
-        squareElement.style.position = 'relative';
-        squareElement.appendChild(overlay);
-
-        requestAnimationFrame(() => {
-            overlay.style.opacity = '1';
-        });
-    }
-
-    // --- УДАЛЕНИЕ ФРАЗЫ С КЛЕТКИ ---
-    function removePhraseFromSquare(squareElement) {
-        const overlay = squareElement.querySelector('.poetic-overlay');
-        if (overlay) {
-            overlay.style.opacity = '0';
-            setTimeout(() => {
-                if (overlay.parentNode === squareElement) {
-                     overlay.remove();
-                }
-            }, parseFloat(settings.fadeOutDuration) * 1000);
-        }
-    }
+    
+    // Старые функции displayPhraseOnSquare и removePhraseFromSquare больше не нужны
+    // в их первоначальном виде. Если ты хочешь их оставить для чего-то другого,
+    // можно их переделать или удалить. Сейчас они не используются.
 
     // --- ПУБЛИЧНЫЕ МЕТОДЫ МОДУЛЯ ---
     return {
@@ -189,7 +200,7 @@ const PoeticBoardOverlay = (function() {
                 debugMessageLocal("PoeticBoardOverlay Already active.");
                 return;
             }
-            init(boardDomEl, phrases); // init теперь корректно вызовет debugMessageLocal
+            init(boardDomEl, phrases);
         },
         deactivate: function() {
             if (!isActive) {
@@ -197,9 +208,9 @@ const PoeticBoardOverlay = (function() {
                 return;
             }
             detachEventListeners();
-            if (boardElement) { // Добавим проверку перед querySelectorAll
-                const allOverlays = boardElement.querySelectorAll('.poetic-overlay');
-                allOverlays.forEach(ov => ov.remove());
+            if (tooltipElement && tooltipElement.parentNode) {
+                tooltipElement.parentNode.removeChild(tooltipElement); // Удаляем тултип из DOM
+                tooltipElement = null;
             }
             isActive = false;
             debugMessageLocal("PoeticBoardOverlay Deactivated.");
@@ -221,7 +232,6 @@ const PoeticBoardOverlay = (function() {
         isActive: function() {
             return isActive;
         }
-        // debugMessageLocal больше не экспортируется, так как она теперь внутренняя функция
     };
 
 })();
