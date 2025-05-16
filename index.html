@@ -3,14 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Шахматный Бот на JS</title>
+    <title>Шахматный Бот на JS от Лили & Петра</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>Мой Первый Шахматный Бот ♟️</h1>
-    <div id="chessBoard">
-        <!-- Сюда мы будем генерировать клетки доски с помощью JS -->
+    <h1>Шахматный Бот ♟️</h1>
+    <div id="infoPanel">
+        <p>Ход: <span id="currentPlayer">Белых</span></p>
+        <p>Сообщение: <span id="message">Выберите фигуру для хода.</span></p>
     </div>
+    <div id="chessBoard">
+        <!-- Клетки доски будут сгенерированы здесь с помощью JavaScript -->
+    </div>
+    <button id="resetButton">Начать заново</button>
+
     <script src="script.js"></script>
 </body>
 </html>
