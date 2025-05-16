@@ -62,8 +62,30 @@ function initializeBoard() {
     gameStatus = "ongoing";
 
     renderBoard();
+    function initializeBoard() {
+    debugMessage("initializeBoard called");
+    // ... (весь твой код инициализации переменных) ...
+
+    renderBoard(); // <--- Вот здесь доска отрисовалась с клетками
+
+    // А вот теперь активируем поэтический оверлей!
+    const chessBoardElement = document.getElementById('chessBoard');
+    if (chessBoardElement) {
+        try {
+            PoeticBoardOverlay.activate(chessBoardElement); 
+            debugMessage("Poetic Overlay Activated from main script!");
+        } catch (e) {
+            debugMessage("ОШИБКА при вызове PoeticBoardOverlay.activate(): " + e.message + " | Стек: " + (e.stack ? e.stack.substring(0,150) : "нет стека"));
+        }
+    } else {
+        debugMessage("ОШИБКА: Элемент доски 'chessBoard' НЕ НАЙДЕН для PoeticBoardOverlay!");
+    }
+    
     clearKingInCheckHighlight();
     updateInfoPanel("Игра началась. Ход Белых.");
+}
+  //  clearKingInCheckHighlight();
+ //   updateInfoPanel("Игра началась. Ход Белых.");
     // Внутри initializeBoard()
 //    console.log('Доска инициализирована.');
  //   const chessBoardElement = document.getElementById('chessBoard');
