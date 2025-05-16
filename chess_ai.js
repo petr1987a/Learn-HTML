@@ -12,7 +12,7 @@ const ChessAI = {
             // --- Worker code as string ---
             const workerCode = `
                 onmessage = function(event) {
-                    const { board, playerColor, move, depth, getAllLegalMovesStr, isKingInCheckStr } = event.data;
+                    const { board, playerColor, move, depth, getAllLegalMovesStr, isKingInCheckStr, boardSize } = event.data;
                     const getAllLegalMovesFunc = eval('(' + getAllLegalMovesStr + ')');
                     const isKingInCheckFunc = eval('(' + isKingInCheckStr + ')');
 
@@ -28,7 +28,7 @@ const ChessAI = {
                     function evaluateBoard(board) {
                         const pieceValues = { 'wK': 0, 'wQ': 9, 'wR': 5, 'wB': 3, 'wN': 3, 'wP': 1, 'bK': 0, 'bQ': -9, 'bR': -5, 'bB': -3, 'bN': -3, 'bP': -1 };
                         let total = 0;
-                        for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+                        for (let r = 0; r < boardSize; r++) for (let c = 0; c < boardSize; c++) {
                             const piece = board[r][c];
                             if (piece) total += pieceValues[piece] || 0;
                         }
@@ -107,6 +107,7 @@ const ChessAI = {
             let finished = 0;
             const results = [];
             const WORKER_TIMEOUT = 10000; // 10 seconds timeout
+            const boardSize = 8; // Передаём размер доски явно
 
             workerPool.forEach((worker, index) => {
                 if (index < orderedMoves.length) {
@@ -126,7 +127,8 @@ const ChessAI = {
                         move: orderedMoves[index],
                         getAllLegalMovesStr,
                         isKingInCheckStr,
-                        depth: 2 // Глубина оставлена равной 2
+                        depth: 2, // Глубина оставлена равной 2
+                        boardSize // <-- теперь передаётся в воркер!
                     });
 
                     worker.onmessage = function(e) {
