@@ -84,21 +84,6 @@ function initializeBoard() {
     clearKingInCheckHighlight();
     updateInfoPanel("Игра началась. Ход Белых.");
 }
-  //  clearKingInCheckHighlight();
- //   updateInfoPanel("Игра началась. Ход Белых.");
-    // Внутри initializeBoard()
-//    console.log('Доска инициализирована.');
- //   const chessBoardElement = document.getElementById('chessBoard');
- //  if (chessBoardElement) { // НАЧАЛО IF
-//      try { // НАЧАЛО TRY ВНУТРИ IF
-  //          PoeticBoardOverlay.activate(chessBoardElement); 
-//            debugMessage("Poetic Overlay Activated from main script!"); // Используем твою функцию
-//      } catch (e) { // НАЧАЛО CATCH ВНУТРИ IF
-//            debugMessage("ОШИБКА при вызове PoeticBoardOverlay.activate(): " + e.message + " | Стек: " + (e.stack ? e.stack.substring(0,150) : "нет стека"));
-//       } // КОНЕЦ CATCH ВНУТРИ IF
-//    } else { // НАЧАЛО ELSE, относящегося к if (chessBoardElement)
-//       debugMessage("ОШИБКА: Элемент доски 'chessBoard' НЕ НАЙДЕН для PoeticBoardOverlay!");
-//    } // КОНЕЦ ELSE
 }// Конец initializeBoard()
 
 function renderBoard() {
