@@ -359,6 +359,81 @@ function getAllLegalMoves(playerColor, board) {
     return legalMoves;
 }
 
+// Вставь ЭТОТ БЛОК в свой script.js, например, после функции getAllLegalMoves
+// или перед initializeBoard. Главное, чтобы они были определены ДО того, как их вызовут.
+
+function updateInfoPanel(messageText) {
+    if (messageElement) messageElement.textContent = messageText;
+    if (currentPlayerElement) currentPlayerElement.textContent = (currentPlayer === 'w' ? 'Белых' : 'Черных');
+    console.log(`InfoPanel: ${messageText}, Ход: ${currentPlayerElement ? currentPlayerElement.textContent : (currentPlayer === 'w' ? 'Белых' : 'Черных')}`);
+}
+
+function highlightPossibleMoves(row, col, pieceCode) {
+    // Это сложная функция. Пока просто выведем в консоль.
+    // Тебе нужно будет здесь реализовать логику получения всех валидных ходов для фигуры
+    // и добавления класса 'possible-move' к соответствующим клеткам на доске.
+    console.log(`Нужно подсветить ходы для ${PIECES[pieceCode]} (${pieceCode}) с клетки ${row},${col}`);
+    
+    // Примерная логика (НУЖНО ДОРАБОТАТЬ!):
+    // clearPossibleMovesHighlight(); // Сначала очищаем старые подсветки
+    // const pieceColor = pieceCode[0];
+    // for (let tr = 0; tr < boardSize; tr++) {
+    //     for (let tc = 0; tc < boardSize; tc++) {
+    //         if (isValidMove(row, col, tr, tc)) { // isValidMove должна быть готова к этому
+    //             const square = boardElement.querySelector(`.square[data-row='${tr}'][data-col='${tc}']`);
+    //             if (square) square.classList.add('possible-move');
+    //         }
+    //     }
+    // }
+    // Не забудь перерисовать доску, если selectedSquare подсвечивается отдельно от possible-move.
+    // В твоем коде renderBoard() вызывается после onSquareClick, что должно обновить подсветку.
+    // Убедись, что в renderBoard() есть логика добавления класса 'selected' и 'possible-move'.
+    // Судя по CSS, класс 'possible-move' должен подсвечивать клетки, а 'selected' - выбранную фигуру.
+    // В onSquareClick ты вызываешь highlightPossibleMoves, а потом renderBoard.
+    // renderBoard должна уметь подсвечивать и selectedSquare, и клетки из possible-move.
+    // Возможно, highlightPossibleMoves должна просто собирать массив возможных ходов,
+    // а renderBoard уже на основе этого массива и selectedSquare расставлять классы.
+}
+
+function clearPossibleMovesHighlight() {
+    const previouslySelected = boardElement.querySelector('.selected');
+    if (previouslySelected) previouslySelected.classList.remove('selected');
+    document.querySelectorAll('.possible-move').forEach(sq => sq.classList.remove('possible-move'));
+    // Эта функция должна убирать класс 'possible-move' со всех клеток
+    // и, возможно, 'selected' с ранее выбранной.
+    // Твой renderBoard() сейчас сам заботится о 'selected', но 'possible-move' - нет.
+}
+
+function highlightKingInCheck(kingColor, isMate) {
+    let kingRow, kingCol;
+    const kingPieceCode = kingColor + 'K';
+    for (let r = 0; r < boardSize; r++) {
+        for (let c = 0; c < boardSize; c++) {
+            if (currentBoardState[r][c] === kingPieceCode) {
+                kingRow = r; kingCol = c; break;
+            }
+        }
+        if (kingRow !== undefined) break;
+    }
+    if (kingRow !== undefined && kingCol !== undefined) {
+        const kingSquare = boardElement.querySelector(`.square[data-row='${kingRow}'][data-col='${kingCol}']`);
+        if (kingSquare) {
+            kingSquare.classList.add(isMate ? 'checkmate' : 'check');
+            console.log(`Король ${kingColor} ${isMate ? 'ПОД МАТОМ' : 'ПОД ШАХОМ'} на ${kingRow},${kingCol}`);
+        }
+    } else {
+        console.error(`Не удалось найти короля ${kingColor} для подсветки шаха/мата.`);
+    }
+}
+
+function clearKingInCheckHighlight() {
+    document.querySelectorAll('.check, .checkmate').forEach(sq => {
+        sq.classList.remove('check');
+        sq.classList.remove('checkmate');
+    });
+}
+// --- КОНЕЦ БЛОКА ЗАГЛУШЕК ---
+
 // --- Выполнение хода ---
 function movePiece(startRow, startCol, endRow, endCol, moveDetails) {
     const piece = currentBoardState[startRow][startCol];
@@ -427,14 +502,67 @@ function switchPlayer() {
     checkGameStatus(); // Проверяем статус для нового текущего игрока
 }
 
+// Найди свою функцию checkGameStatus и ЗАМЕНИ её этой версией:
 function checkGameStatus() {
-    // currentPlayer - это игрок, который СЕЙЧАС должен ходить.
     const legalMoves = getAllLegalMoves(currentPlayer, currentBoardState);
     const kingIsChecked = isKingInCheck(currentPlayer, currentBoardState);
 
-    clearKingInCheckHighlight(); // Очищаем старую подсветку шаха
+    clearKingInCheckHighlight(); // Убираем старую подсветку
 
     if (legalMoves.length === 0) {
         if (kingIsChecked) {
             gameStatus = "checkmate";
-           
+            highlightKingInCheck(currentPlayer, true); // Подсветить мат
+            updateInfoPanel(`МАТ! ${currentPlayer === 'w' ? 'Белые' : 'Черные'} проиграли. Нажмите 'Начать заново'.`);
+        } else {
+            gameStatus = "stalemate";
+            // Нет специальной подсветки для пата в CSS, но можно добавить, если нужно
+            updateInfoPanel(`ПАТ! Ничья. Нажмите 'Начать заново'.`);
+        }
+    } else if (kingIsChecked) {
+        highlightKingInCheck(currentPlayer, false); // Подсветить шах
+        updateInfoPanel(`ШАХ ${currentPlayer === 'w' ? 'Белым' : 'Черным'}! Ваш ход.`);
+    }
+    // Если не мат, не пат и не шах, то updateInfoPanel уже вызвана в switchPlayer
+
+    renderBoard(); // Перерисовываем доску, чтобы отразить подсветку шаха/мата
+}
+
+// ВСТАВЬ ЭТОТ КОД В САМЫЙ КОНЕЦ ФАЙЛА script.js
+
+// 1. Назначаем обработчик на кнопку "Начать заново"
+if (resetButton) { // Проверяем, что кнопка найдена
+    resetButton.addEventListener('click', initializeBoard);
+} else {
+    console.error("Кнопка сброса #resetButton не найдена!");
+}
+
+// 2. Инициализируем доску, когда весь HTML загружен и готов (DOMContentLoaded)
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("DOM полностью загружен и разобран. Инициализация доски...");
+    initializeBoard(); // Вот он, волшебный вызов! ✨
+});
+
+// Небольшое замечание по функции highlightPossibleMoves в onSquareClick:
+// Сейчас ты вызываешь highlightPossibleMoves, а затем renderBoard().
+// renderBoard() в твоей текущей версии не знает о 'possible-move'.
+// Тебе нужно будет либо:
+//  а) В highlightPossibleMoves прямо добавлять/удалять класс 'possible-move' к клеткам DOM.
+//  б) Хранить список возможных ходов в переменной, а renderBoard() будет их отрисовывать.
+// Вариант (а) проще для начала. Убедись, что clearPossibleMovesHighlight() также работает с DOM-элементами.
+// В моих заглушках я сделала clearPossibleMovesHighlight и highlightKingInCheck работающими с DOM.
+
+// А теперь твоя функция onSquareClick с учетом этого (возможно, понадобится доработка):
+// В onSquareClick, когда ты выбираешь фигуру:
+// selectedSquare = { row, col, piece: pieceCode };
+// clearPossibleMovesHighlight(); // Очистить старые
+// highlightPossibleMoves(row, col, pieceCode); // Показать новые (эта функция должна сама модифицировать DOM)
+// updateInfoPanel(`Выбрана фигура ${PIECES[pieceCode]}. Куда походить?`);
+// renderBoard(); // Перерисовать, чтобы показать 'selected' и, возможно, обновить другие состояния
+
+// Или, если highlightPossibleMoves только возвращает массив ходов:
+// let possibleMoves = []; // Глобальная или в области видимости renderBoard
+// В onSquareClick:
+// selectedSquare = { row, col, piece: pieceCode };
+// possibleMoves = getPossibleMovesForPiece(row, col, pieceCode); // Новая функция
+// renderBoard(); // renderBoard теперь должна отрисовывать и 'selected' и 'possible-move' из массива possibleMoves
