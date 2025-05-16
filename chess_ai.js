@@ -50,21 +50,44 @@ function orderMoves(moves) {
     });
 }
 
-// --- Минимакс с альфа-бета и move ordering, top-3 хода ---
+// Проверка, даёт ли ход шах/мат
+function isCheckOrMateMove(move, board, getAllLegalMovesFunc, opponentColor) {
+    const tempBoard = makeMove(board, move);
+    return isKingInCheck(opponentColor, tempBoard);
+}
+
+// --- Минимакс с альфа-бета, move ordering и гарантией поиска шахов/матов ---
 function minimaxAlphaBeta(board, depth, alpha, beta, maximizingPlayer, getAllLegalMovesFunc) {
     const currentColor = maximizingPlayer ? 'w' : 'b';
+    const opponentColor = maximizingPlayer ? 'b' : 'w';
     let moves = getAllLegalMovesFunc(currentColor, board);
-    moves = orderMoves(moves).slice(0, 3); // <= Ограничение: только 3 лучших хода
+    moves = orderMoves(moves);
 
-    if (depth === 0 || moves.length === 0) {
+    // Всегда добавить все ходы, дающие шах/мат, даже если их больше 3!
+    const checkMoves = moves.filter(m => isCheckOrMateMove(m, board, getAllLegalMovesFunc, opponentColor));
+    const nonCheckMoves = moves.filter(m => !isCheckOrMateMove(m, board, getAllLegalMovesFunc, opponentColor));
+    // top-3 обычных + все шахи/маты
+    const topMoves = nonCheckMoves.slice(0, 3).concat(checkMoves);
+    // удаляем дубли
+    const uniqueMoves = [];
+    const seen = new Set();
+    for (const move of topMoves) {
+        // Сериализуем ход для сравнения (можно по from/to)
+        const key = `${move.from.r},${move.from.c},${move.to.tr},${move.to.tc}`;
+        if (!seen.has(key)) {
+            uniqueMoves.push(move);
+            seen.add(key);
+        }
+    }
+
+    if (depth === 0 || uniqueMoves.length === 0) {
         return { value: evaluateBoard(board, getAllLegalMovesFunc) };
     }
 
     let bestMove = null;
-
     if (maximizingPlayer) {
         let maxEval = -Infinity;
-        for (let move of moves) {
+        for (let move of uniqueMoves) {
             const newBoard = makeMove(board, move);
             const evalResult = minimaxAlphaBeta(newBoard, depth - 1, alpha, beta, false, getAllLegalMovesFunc);
             if (evalResult.value > maxEval) {
@@ -72,12 +95,12 @@ function minimaxAlphaBeta(board, depth, alpha, beta, maximizingPlayer, getAllLeg
                 bestMove = move;
             }
             alpha = Math.max(alpha, evalResult.value);
-            if (beta <= alpha) break; // отсечение
+            if (beta <= alpha) break;
         }
         return { value: maxEval, move: bestMove };
     } else {
         let minEval = Infinity;
-        for (let move of moves) {
+        for (let move of uniqueMoves) {
             const newBoard = makeMove(board, move);
             const evalResult = minimaxAlphaBeta(newBoard, depth - 1, alpha, beta, true, getAllLegalMovesFunc);
             if (evalResult.value < minEval) {
@@ -85,7 +108,7 @@ function minimaxAlphaBeta(board, depth, alpha, beta, maximizingPlayer, getAllLeg
                 bestMove = move;
             }
             beta = Math.min(beta, evalResult.value);
-            if (beta <= alpha) break; // отсечение
+            if (beta <= alpha) break;
         }
         return { value: minEval, move: bestMove };
     }
