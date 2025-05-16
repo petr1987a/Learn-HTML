@@ -1,6 +1,5 @@
-// script.js — Полная версия для шахмат с асинхронным ChessAI (Web Worker) и защитой от мата в 1 ход
+// script.js — Исправленная версия для шахмат с передачей boardSize
 
-// --- Глобальные переменные и элементы ---
 const PIECES = {
     'wK': '♔','wQ': '♕','wR': '♖','wB': '♗','wN': '♘','wP': '♙',
     'bK': '♚','bQ': '♛','bR': '♜','bB': '♝','bN': '♞','bP': '♟'
@@ -18,7 +17,7 @@ const initialBoardSetup = [
 let currentBoardState = [];
 let selectedSquare = null;
 let currentPlayer = 'w';
-const boardSize = 8;
+let boardSize = 8;
 let whiteKingMoved = false, blackKingMoved = false;
 let whiteRookKingsideMoved = false, whiteRookQueensideMoved = false;
 let blackRookKingsideMoved = false, blackRookQueensideMoved = false;
@@ -30,7 +29,6 @@ const currentPlayerElement = document.getElementById('currentPlayer');
 const resetButton = document.getElementById('resetButton');
 let botThinkingPhrases = [];
 
-// --- Вспомогательные функции и инициализация ---
 function debugMessage(msg) { /* console.log("DEBUG:", msg); */ }
 function updateInfoPanel(messageText) {
     if (messageElement) {
@@ -62,7 +60,6 @@ function initializeBotPhrases() {
     }
 }
 
-// --- Инициализация и рендеринг доски ---
 function initializeBoard() {
     currentBoardState = JSON.parse(JSON.stringify(initialBoardSetup));
     selectedSquare = null;
@@ -99,14 +96,13 @@ function renderBoard() {
         const domSquare = boardElement.querySelector(`.square[data-row='${selectedSquare.row}'][data-col='${selectedSquare.col}']`);
         if (domSquare) domSquare.classList.add('selected');
     }
-    if (gameStatus === "ongoing" && isKingInCheck(currentPlayer, currentBoardState)) {
+    if (gameStatus === "ongoing" && isKingInCheck(currentPlayer, currentBoardState, boardSize)) {
          highlightKingInCheck(currentPlayer, false);
     } else if (gameStatus === "checkmate") {
         highlightKingInCheck(currentPlayer, true);
     }
 }
 
-// --- Обработка кликов пользователя ---
 function onSquareClick(row, col) {
     if (gameStatus !== "ongoing") {
         updateInfoPanel("Игра завершена. Начните новую игру, нажав 'Начать заново'.");
@@ -114,7 +110,7 @@ function onSquareClick(row, col) {
     }
     const pieceCode = currentBoardState[row][col];
     if (selectedSquare) {
-        const moveDetails = isValidMove(selectedSquare.row, selectedSquare.col, row, col, currentBoardState);
+        const moveDetails = isValidMove(selectedSquare.row, selectedSquare.col, row, col, currentBoardState, boardSize);
         if (moveDetails) {
             movePiece(selectedSquare.row, selectedSquare.col, row, col, moveDetails);
             selectedSquare = null;
@@ -154,8 +150,8 @@ function onSquareClick(row, col) {
     }
 }
 
-// --- Логика шахматных ходов, шаха, мата ---
-function _getPieceSpecificMoveLogic(startRow, startCol, endRow, endCol, pieceCode, boardState, forAttackCheck = false) {
+// ---- Логика шахмат с передачей boardSize ----
+function _getPieceSpecificMoveLogic(startRow, startCol, endRow, endCol, pieceCode, boardState, boardSize, forAttackCheck = false) {
     const targetPieceOnEndSquare = boardState[endRow][endCol];
     if (!pieceCode) return false;
     if (startRow === endRow && startCol === endCol) return false;
@@ -164,7 +160,7 @@ function _getPieceSpecificMoveLogic(startRow, startCol, endRow, endCol, pieceCod
     switch (pieceType) {
         case 'P': {
             const direction = (pieceColor === 'w') ? -1 : 1;
-            const initialRow = (pieceColor === 'w') ? 6 : 1;
+            const initialRow = (pieceColor === 'w') ? boardSize - 2 : 1;
             if (endCol === startCol) {
                 if (!targetPieceOnEndSquare) {
                     if (endRow === startRow + direction) return { type: 'normal' };
@@ -228,9 +224,9 @@ function _getPieceSpecificMoveLogic(startRow, startCol, endRow, endCol, pieceCod
                 return { type: (targetPieceOnEndSquare && !targetPieceOnEndSquare.startsWith(pieceColor)) ? 'capture' : 'normal' };
             if (!forAttackCheck && dRowK === 0 && dColK === 2) {
                 const kingMoved = (pieceColor === 'w') ? whiteKingMoved : blackKingMoved;
-                if (kingMoved || isKingInCheck(pieceColor, boardState)) return false;
+                if (kingMoved || isKingInCheck(pieceColor, boardState, boardSize)) return false;
                 const kingSide = endCol > startCol;
-                const rookColInitial = kingSide ? 7 : 0;
+                const rookColInitial = kingSide ? boardSize - 1 : 0;
                 const rookExpectedPiece = pieceColor + 'R';
                 if (boardState[startRow][rookColInitial] !== rookExpectedPiece) return false;
                 const rookMovedFlag = kingSide ?
@@ -242,8 +238,8 @@ function _getPieceSpecificMoveLogic(startRow, startCol, endRow, endCol, pieceCod
                     if (boardState[startRow][c]) return false;
                 }
                 const opponentColor = (pieceColor === 'w') ? 'b' : 'w';
-                if (isSquareAttacked(startRow, startCol + pathDir, opponentColor, boardState)) return false;
-                if (isSquareAttacked(startRow, startCol + 2 * pathDir, opponentColor, boardState)) return false;
+                if (isSquareAttacked(startRow, startCol + pathDir, opponentColor, boardState, boardSize)) return false;
+                if (isSquareAttacked(startRow, startCol + 2 * pathDir, opponentColor, boardState, boardSize)) return false;
                 return { type: kingSide ? 'castling_kingside' : 'castling_queenside' };
             }
             return false;
@@ -251,11 +247,11 @@ function _getPieceSpecificMoveLogic(startRow, startCol, endRow, endCol, pieceCod
         default: return false;
     }
 }
-function isValidMove(startRow, startCol, endRow, endCol, boardStateToTest) {
+function isValidMove(startRow, startCol, endRow, endCol, boardStateToTest, boardSize) {
     const pieceCode = boardStateToTest[startRow][startCol];
     if (!pieceCode) return false;
     const pieceColor = pieceCode[0];
-    const moveDetails = _getPieceSpecificMoveLogic(startRow, startCol, endRow, endCol, pieceCode, boardStateToTest);
+    const moveDetails = _getPieceSpecificMoveLogic(startRow, startCol, endRow, endCol, pieceCode, boardStateToTest, boardSize);
     if (!moveDetails) return false;
     const tempBoardState = JSON.parse(JSON.stringify(boardStateToTest));
     const pieceToMove = tempBoardState[startRow][startCol];
@@ -264,27 +260,27 @@ function isValidMove(startRow, startCol, endRow, endCol, boardStateToTest) {
         const capturedPawnCol = endCol;
         tempBoardState[capturedPawnRow][capturedPawnCol] = '';
     } else if (moveDetails.type === 'castling_kingside') {
-        tempBoardState[startRow][startCol + 1] = tempBoardState[startRow][7];
-        tempBoardState[startRow][7] = '';
+        tempBoardState[startRow][startCol + 1] = tempBoardState[startRow][boardSize - 1];
+        tempBoardState[startRow][boardSize - 1] = '';
     } else if (moveDetails.type === 'castling_queenside') {
         tempBoardState[startRow][startCol - 1] = tempBoardState[startRow][0];
         tempBoardState[startRow][0] = '';
     }
     tempBoardState[endRow][endCol] = pieceToMove;
     tempBoardState[startRow][startCol] = '';
-    if (isKingInCheck(pieceColor, tempBoardState)) return false;
+    if (isKingInCheck(pieceColor, tempBoardState, boardSize)) return false;
     return moveDetails;
 }
-function isSquareAttacked(targetRow, targetCol, attackerColor, boardState) {
+function isSquareAttacked(targetRow, targetCol, attackerColor, boardState, boardSize) {
     for (let r = 0; r < boardSize; r++) for (let c = 0; c < boardSize; c++) {
         const pieceCode = boardState[r][c];
         if (pieceCode && pieceCode.startsWith(attackerColor)) {
-            if (_getPieceSpecificMoveLogic(r, c, targetRow, targetCol, pieceCode, boardState, true)) return true;
+            if (_getPieceSpecificMoveLogic(r, c, targetRow, targetCol, pieceCode, boardState, boardSize, true)) return true;
         }
     }
     return false;
 }
-function isKingInCheck(kingColor, boardState) {
+function isKingInCheck(kingColor, boardState, boardSize) {
     let kingRow, kingCol, kingPieceCode = kingColor + 'K';
     for (let r = 0; r < boardSize; r++) {
         for (let c = 0; c < boardSize; c++) {
@@ -294,15 +290,15 @@ function isKingInCheck(kingColor, boardState) {
     }
     if (kingRow === undefined) return true;
     const attackerColor = (kingColor === 'w') ? 'b' : 'w';
-    return isSquareAttacked(kingRow, kingCol, attackerColor, boardState);
+    return isSquareAttacked(kingRow, kingCol, attackerColor, boardState, boardSize);
 }
-function getAllLegalMoves(playerColor, board) {
+function getAllLegalMoves(playerColor, board, boardSize) {
     const legalMoves = [];
     for (let r = 0; r < boardSize; r++) for (let c = 0; c < boardSize; c++) {
         const piece = board[r][c];
         if (piece && piece.startsWith(playerColor)) {
             for (let tr = 0; tr < boardSize; tr++) for (let tc = 0; tc < boardSize; tc++) {
-                const moveDetails = isValidMove(r, c, tr, tc, board);
+                const moveDetails = isValidMove(r, c, tr, tc, board, boardSize);
                 if (moveDetails) legalMoves.push({ from: { r, c }, to: { tr, tc }, pieceCode: piece, details: moveDetails });
             }
         }
@@ -316,18 +312,18 @@ function movePiece(startRow, startCol, endRow, endCol, moveDetails) {
     if (pieceType === 'K') pieceColor === 'w' ? whiteKingMoved = true : blackKingMoved = true;
     else if (pieceType === 'R') {
         if (pieceColor === 'w') {
-            if (startRow === 7 && startCol === 0) whiteRookQueensideMoved = true;
-            if (startRow === 7 && startCol === 7) whiteRookKingsideMoved = true;
+            if (startRow === boardSize - 1 && startCol === 0) whiteRookQueensideMoved = true;
+            if (startRow === boardSize - 1 && startCol === boardSize - 1) whiteRookKingsideMoved = true;
         } else {
             if (startRow === 0 && startCol === 0) blackRookQueensideMoved = true;
-            if (startRow === 0 && startCol === 7) blackRookKingsideMoved = true;
+            if (startRow === 0 && startCol === boardSize - 1) blackRookKingsideMoved = true;
         }
     }
     if (moveDetails.type === 'en_passant') {
         currentBoardState[startRow][endCol] = '';
     } else if (moveDetails.type === 'castling_kingside') {
-        currentBoardState[startRow][startCol + 1] = currentBoardState[startRow][7];
-        currentBoardState[startRow][7] = '';
+        currentBoardState[startRow][startCol + 1] = currentBoardState[startRow][boardSize - 1];
+        currentBoardState[startRow][boardSize - 1] = '';
     } else if (moveDetails.type === 'castling_queenside') {
         currentBoardState[startRow][startCol - 1] = currentBoardState[startRow][0];
         currentBoardState[startRow][0] = '';
@@ -335,7 +331,7 @@ function movePiece(startRow, startCol, endRow, endCol, moveDetails) {
     currentBoardState[endRow][endCol] = piece;
     currentBoardState[startRow][startCol] = '';
     if (pieceType === 'P') {
-        const promotionRank = (pieceColor === 'w') ? 0 : 7;
+        const promotionRank = (pieceColor === 'w') ? 0 : boardSize - 1;
         if (endRow === promotionRank) {
             let promotedPieceType = 'Q';
             const botColor = 'b';
@@ -355,7 +351,6 @@ function movePiece(startRow, startCol, endRow, endCol, moveDetails) {
     }
 }
 
-// --- Подсветка, переключение игроков, конец игры ---
 function highlightPossibleMoves(row, col, pieceCode) {}
 function clearPossibleMovesHighlight() {
     document.querySelectorAll('.possible-move').forEach(sq => sq.classList.remove('possible-move'));
@@ -382,8 +377,8 @@ function switchPlayer() {
     checkGameStatus();
 }
 function checkGameStatus() {
-    const legalMovesForCurrentPlayer = getAllLegalMoves(currentPlayer, currentBoardState);
-    const kingIsCurrentlyInCheck = isKingInCheck(currentPlayer, currentBoardState);
+    const legalMovesForCurrentPlayer = getAllLegalMoves(currentPlayer, currentBoardState, boardSize);
+    const kingIsCurrentlyInCheck = isKingInCheck(currentPlayer, currentBoardState, boardSize);
     clearKingInCheckHighlight();
     if (legalMovesForCurrentPlayer.length === 0) {
         if (kingIsCurrentlyInCheck) {
@@ -402,7 +397,6 @@ function checkGameStatus() {
     renderBoard();
 }
 
-// --- Асинхронный ход бота ---
 function makeBotMove() {
     const botColor = 'b';
     if (currentPlayer !== botColor || gameStatus !== "ongoing") return;
@@ -428,7 +422,6 @@ function makeBotMove() {
     });
 }
 
-// --- Сброс и инициализация ---
 if (resetButton) {
     resetButton.addEventListener('click', initializeBoard);
 } else {
