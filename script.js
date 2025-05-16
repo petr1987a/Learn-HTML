@@ -1,13 +1,10 @@
-function debugMessage(msg) {
-    const messageContent = (typeof msg === 'object' && msg !== null) ? JSON.stringify(msg, null, 2) : msg;
-    console.log("DEBUG:", msg);
-}
+// script.js — Полная версия для шахмат с асинхронным ChessAI (Web Worker) и защитой от мата в 1 ход
 
+// --- Глобальные переменные и элементы ---
 const PIECES = {
     'wK': '♔','wQ': '♕','wR': '♖','wB': '♗','wN': '♘','wP': '♙',
     'bK': '♚','bQ': '♛','bR': '♜','bB': '♝','bN': '♞','bP': '♟'
 };
-
 const initialBoardSetup = [
     ['bR','bN','bB','bQ','bK','bB','bN','bR'],
     ['bP','bP','bP','bP','bP','bP','bP','bP'],
@@ -18,7 +15,6 @@ const initialBoardSetup = [
     ['wP','wP','wP','wP','wP','wP','wP','wP'],
     ['wR','wN','wB','wQ','wK','wB','wN','wR']
 ];
-
 let currentBoardState = [];
 let selectedSquare = null;
 let currentPlayer = 'w';
@@ -28,25 +24,14 @@ let whiteRookKingsideMoved = false, whiteRookQueensideMoved = false;
 let blackRookKingsideMoved = false, blackRookQueensideMoved = false;
 let enPassantTargetSquare = null;
 let gameStatus = "ongoing";
-
 const boardElement = document.getElementById('chessBoard');
 const messageElement = document.getElementById('message');
 const currentPlayerElement = document.getElementById('currentPlayer');
 const resetButton = document.getElementById('resetButton');
 let botThinkingPhrases = [];
 
-function initializeBotPhrases() {
-    if (typeof PoeticPhrasesSource !== 'undefined' && typeof PoeticPhrasesSource.getPhrases === 'function') {
-        botThinkingPhrases = PoeticPhrasesSource.getPhrases();
-        if (botThinkingPhrases.length === 0) {
-            debugMessage("WARN: PoeticPhrasesSource.getPhrases() вернул пустой массив.");
-        }
-    } else {
-        debugMessage("ERROR: PoeticPhrasesSource не найден или не содержит метода getPhrases.");
-        botThinkingPhrases = ["Бот обдумывает свой ход...","ИИ в процессе размышлений...","Пожалуйста, подождите..."];
-    }
-}
-
+// --- Вспомогательные функции и инициализация ---
+function debugMessage(msg) { /* console.log("DEBUG:", msg); */ }
 function updateInfoPanel(messageText) {
     if (messageElement) {
         messageElement.textContent = messageText;
@@ -55,7 +40,6 @@ function updateInfoPanel(messageText) {
     }
     if (currentPlayerElement) currentPlayerElement.textContent = (currentPlayer === 'w' ? 'Белых' : 'Черных');
 }
-
 function showBotThinkingPoetry() {
     if (!messageElement) return;
     if (botThinkingPhrases.length > 0) {
@@ -67,9 +51,19 @@ function showBotThinkingPoetry() {
         updateInfoPanel("Бот думает...");
     }
 }
+function initializeBotPhrases() {
+    if (typeof PoeticPhrasesSource !== 'undefined' && typeof PoeticPhrasesSource.getPhrases === 'function') {
+        botThinkingPhrases = PoeticPhrasesSource.getPhrases();
+        if (botThinkingPhrases.length === 0) {
+            debugMessage("WARN: PoeticPhrasesSource.getPhrases() вернул пустой массив.");
+        }
+    } else {
+        botThinkingPhrases = ["Бот обдумывает свой ход...","ИИ в процессе размышлений...","Пожалуйста, подождите..."];
+    }
+}
 
+// --- Инициализация и рендеринг доски ---
 function initializeBoard() {
-    debugMessage("initializeBoard called");
     currentBoardState = JSON.parse(JSON.stringify(initialBoardSetup));
     selectedSquare = null;
     currentPlayer = 'w';
@@ -82,7 +76,6 @@ function initializeBoard() {
     clearKingInCheckHighlight();
     updateInfoPanel("Игра началась. Ход Белых.");
 }
-
 function renderBoard() {
     boardElement.innerHTML = '';
     for (let row = 0; row < boardSize; row++) {
@@ -113,8 +106,8 @@ function renderBoard() {
     }
 }
 
+// --- Обработка кликов пользователя ---
 function onSquareClick(row, col) {
-    debugMessage(`onSquareClick: ${row},${col}. Player: ${currentPlayer}. Selected: ${selectedSquare ? selectedSquare.piece : 'null'}`);
     if (gameStatus !== "ongoing") {
         updateInfoPanel("Игра завершена. Начните новую игру, нажав 'Начать заново'.");
         return;
@@ -124,7 +117,6 @@ function onSquareClick(row, col) {
         const moveDetails = isValidMove(selectedSquare.row, selectedSquare.col, row, col, currentBoardState);
         if (moveDetails) {
             movePiece(selectedSquare.row, selectedSquare.col, row, col, moveDetails);
-            const prevSelectedPiece = selectedSquare.piece;
             selectedSquare = null;
             clearPossibleMovesHighlight();
             if (gameStatus === "ongoing") {
@@ -162,6 +154,7 @@ function onSquareClick(row, col) {
     }
 }
 
+// --- Логика шахматных ходов, шаха, мата ---
 function _getPieceSpecificMoveLogic(startRow, startCol, endRow, endCol, pieceCode, boardState, forAttackCheck = false) {
     const targetPieceOnEndSquare = boardState[endRow][endCol];
     if (!pieceCode) return false;
@@ -169,7 +162,7 @@ function _getPieceSpecificMoveLogic(startRow, startCol, endRow, endCol, pieceCod
     if (!forAttackCheck && targetPieceOnEndSquare && targetPieceOnEndSquare.startsWith(pieceCode[0])) return false;
     const pieceType = pieceCode.substring(1), pieceColor = pieceCode[0];
     switch (pieceType) {
-        case 'P':
+        case 'P': {
             const direction = (pieceColor === 'w') ? -1 : 1;
             const initialRow = (pieceColor === 'w') ? 6 : 1;
             if (endCol === startCol) {
@@ -183,7 +176,8 @@ function _getPieceSpecificMoveLogic(startRow, startCol, endRow, endCol, pieceCod
                 if (enPassantTargetSquare && endRow === enPassantTargetSquare.row && endCol === enPassantTargetSquare.col && !targetPieceOnEndSquare) return { type: 'en_passant' };
             }
             return false;
-        case 'R':
+        }
+        case 'R': {
             if (startRow !== endRow && startCol !== endCol) return false;
             if (startRow === endRow) {
                 const step = (endCol > startCol) ? 1 : -1;
@@ -193,19 +187,22 @@ function _getPieceSpecificMoveLogic(startRow, startCol, endRow, endCol, pieceCod
                 for (let r = startRow + step; r !== endRow; r += step) { if (boardState[r][startCol]) return false; }
             }
             return { type: (targetPieceOnEndSquare && !targetPieceOnEndSquare.startsWith(pieceColor)) ? 'capture' : 'normal' };
-        case 'N':
+        }
+        case 'N': {
             const dRowN = Math.abs(endRow - startRow), dColN = Math.abs(endCol - startCol);
             if ((dRowN === 2 && dColN === 1) || (dRowN === 1 && dColN === 2))
                 return { type: (targetPieceOnEndSquare && !targetPieceOnEndSquare.startsWith(pieceColor)) ? 'capture' : 'normal' };
             return false;
-        case 'B':
+        }
+        case 'B': {
             if (Math.abs(endRow - startRow) !== Math.abs(endCol - startCol)) return false;
             const dRowB = (endRow > startRow) ? 1 : -1;
             const dColB = (endCol > startCol) ? 1 : -1;
             let rB = startRow + dRowB, cB = startCol + dColB;
             while (rB !== endRow || cB !== endCol) { if (boardState[rB][cB]) return false; rB += dRowB; cB += dColB; }
             return { type: (targetPieceOnEndSquare && !targetPieceOnEndSquare.startsWith(pieceColor)) ? 'capture' : 'normal' };
-        case 'Q':
+        }
+        case 'Q': {
             const isRookMove = (startRow === endRow || startCol === endCol);
             const isBishopMove = (Math.abs(endRow - startRow) === Math.abs(endCol - startCol));
             if (!isRookMove && !isBishopMove) return false;
@@ -224,7 +221,8 @@ function _getPieceSpecificMoveLogic(startRow, startCol, endRow, endCol, pieceCod
                 while (rQ !== endRow || cQ !== endCol) { if (boardState[rQ][cQ]) return false; rQ += dRowQ; cQ += dColQ; }
             }
             return { type: (targetPieceOnEndSquare && !targetPieceOnEndSquare.startsWith(pieceColor)) ? 'capture' : 'normal' };
-        case 'K':
+        }
+        case 'K': {
             const dRowK = Math.abs(endRow - startRow), dColK = Math.abs(endCol - startCol);
             if (dRowK <= 1 && dColK <= 1 && (dRowK > 0 || dColK > 0))
                 return { type: (targetPieceOnEndSquare && !targetPieceOnEndSquare.startsWith(pieceColor)) ? 'capture' : 'normal' };
@@ -249,12 +247,11 @@ function _getPieceSpecificMoveLogic(startRow, startCol, endRow, endCol, pieceCod
                 return { type: kingSide ? 'castling_kingside' : 'castling_queenside' };
             }
             return false;
+        }
         default: return false;
     }
 }
-
 function isValidMove(startRow, startCol, endRow, endCol, boardStateToTest) {
-    debugMessage(`isValidMove: from ${startRow},${startCol} to ${endRow},${endCol} on board (first row): ${JSON.stringify(boardStateToTest[0])}`);
     const pieceCode = boardStateToTest[startRow][startCol];
     if (!pieceCode) return false;
     const pieceColor = pieceCode[0];
@@ -278,7 +275,6 @@ function isValidMove(startRow, startCol, endRow, endCol, boardStateToTest) {
     if (isKingInCheck(pieceColor, tempBoardState)) return false;
     return moveDetails;
 }
-
 function isSquareAttacked(targetRow, targetCol, attackerColor, boardState) {
     for (let r = 0; r < boardSize; r++) for (let c = 0; c < boardSize; c++) {
         const pieceCode = boardState[r][c];
@@ -288,7 +284,6 @@ function isSquareAttacked(targetRow, targetCol, attackerColor, boardState) {
     }
     return false;
 }
-
 function isKingInCheck(kingColor, boardState) {
     let kingRow, kingCol, kingPieceCode = kingColor + 'K';
     for (let r = 0; r < boardSize; r++) {
@@ -301,9 +296,7 @@ function isKingInCheck(kingColor, boardState) {
     const attackerColor = (kingColor === 'w') ? 'b' : 'w';
     return isSquareAttacked(kingRow, kingCol, attackerColor, boardState);
 }
-
 function getAllLegalMoves(playerColor, board) {
-    debugMessage(`getAllLegalMoves called for: ${playerColor}.`);
     const legalMoves = [];
     for (let r = 0; r < boardSize; r++) for (let c = 0; c < boardSize; c++) {
         const piece = board[r][c];
@@ -314,34 +307,10 @@ function getAllLegalMoves(playerColor, board) {
             }
         }
     }
-    debugMessage(`getAllLegalMoves for ${playerColor} found: ${legalMoves.length} moves.`);
     return legalMoves;
 }
-
-function highlightPossibleMoves(row, col, pieceCode) {}
-function clearPossibleMovesHighlight() {
-    document.querySelectorAll('.possible-move').forEach(sq => sq.classList.remove('possible-move'));
-}
-function highlightKingInCheck(kingColor, isMate) {
-    let kingRow, kingCol, kingPieceCode = kingColor + 'K';
-    for (let r = 0; r < boardSize; r++) {
-        for (let c = 0; c < boardSize; c++) {
-            if (currentBoardState[r][c] === kingPieceCode) { kingRow = r; kingCol = c; break; }
-        }
-        if (kingRow !== undefined) break;
-    }
-    if (kingRow !== undefined && kingCol !== undefined) {
-        const kingSquare = boardElement.querySelector(`.square[data-row='${kingRow}'][data-col='${kingCol}']`);
-        if (kingSquare) kingSquare.classList.add(isMate ? 'checkmate' : 'check');
-    }
-}
-function clearKingInCheckHighlight() {
-    document.querySelectorAll('.check, .checkmate').forEach(sq => { sq.classList.remove('check'); sq.classList.remove('checkmate'); });
-}
-
 function movePiece(startRow, startCol, endRow, endCol, moveDetails) {
     const piece = currentBoardState[startRow][startCol];
-    debugMessage(`movePiece: ${PIECES[piece]} from ${startRow},${startCol} to ${endRow},${endCol}. Details: ${JSON.stringify(moveDetails)}`);
     const pieceColor = piece[0], pieceType = piece.substring(1);
     enPassantTargetSquare = null;
     if (pieceType === 'K') pieceColor === 'w' ? whiteKingMoved = true : blackKingMoved = true;
@@ -386,15 +355,33 @@ function movePiece(startRow, startCol, endRow, endCol, moveDetails) {
     }
 }
 
+// --- Подсветка, переключение игроков, конец игры ---
+function highlightPossibleMoves(row, col, pieceCode) {}
+function clearPossibleMovesHighlight() {
+    document.querySelectorAll('.possible-move').forEach(sq => sq.classList.remove('possible-move'));
+}
+function highlightKingInCheck(kingColor, isMate) {
+    let kingRow, kingCol, kingPieceCode = kingColor + 'K';
+    for (let r = 0; r < boardSize; r++) {
+        for (let c = 0; c < boardSize; c++) {
+            if (currentBoardState[r][c] === kingPieceCode) { kingRow = r; kingCol = c; break; }
+        }
+        if (kingRow !== undefined) break;
+    }
+    if (kingRow !== undefined && kingCol !== undefined) {
+        const kingSquare = boardElement.querySelector(`.square[data-row='${kingRow}'][data-col='${kingCol}']`);
+        if (kingSquare) kingSquare.classList.add(isMate ? 'checkmate' : 'check');
+    }
+}
+function clearKingInCheckHighlight() {
+    document.querySelectorAll('.check, .checkmate').forEach(sq => { sq.classList.remove('check'); sq.classList.remove('checkmate'); });
+}
 function switchPlayer() {
     currentPlayer = (currentPlayer === 'w') ? 'b' : 'w';
-    debugMessage(`switchPlayer: New current player is ${currentPlayer}`);
     updateInfoPanel(`Ход ${currentPlayer === 'w' ? 'Белых' : 'Черных'}.`);
     checkGameStatus();
 }
-
 function checkGameStatus() {
-    debugMessage(`checkGameStatus for player ${currentPlayer} on currentBoard`);
     const legalMovesForCurrentPlayer = getAllLegalMoves(currentPlayer, currentBoardState);
     const kingIsCurrentlyInCheck = isKingInCheck(currentPlayer, currentBoardState);
     clearKingInCheckHighlight();
@@ -415,39 +402,39 @@ function checkGameStatus() {
     renderBoard();
 }
 
+// --- Асинхронный ход бота ---
 function makeBotMove() {
-    debugMessage("[Game] makeBotMove function CALLED.");
     const botColor = 'b';
     if (currentPlayer !== botColor || gameStatus !== "ongoing") return;
     const boardForAI = JSON.parse(JSON.stringify(currentBoardState));
-    const moveData = ChessAI.getSmartMove(
+    ChessAI.getSmartMove(
         boardForAI,
         botColor,
         getAllLegalMoves,
-        isValidMove
-    );
-    if (moveData && moveData.pieceCode) {
-        movePiece(
-            moveData.from.r,
-            moveData.from.c,
-            moveData.to.tr,
-            moveData.to.tc,
-            moveData.details
-        );
-        switchPlayer();
-    } else if (gameStatus === "ongoing") {
-        updateInfoPanel("Ошибка ИИ: не удалось сделать ход. Попробуйте начать заново.");
-    }
+        isKingInCheck
+    ).then(moveData => {
+        if (moveData && moveData.from && moveData.to) {
+            movePiece(
+                moveData.from.r,
+                moveData.from.c,
+                moveData.to.tr,
+                moveData.to.tc,
+                moveData.details
+            );
+            switchPlayer();
+        } else if (gameStatus === "ongoing") {
+            updateInfoPanel("Ошибка ИИ: не удалось сделать ход. Попробуйте начать заново.");
+        }
+    });
 }
 
+// --- Сброс и инициализация ---
 if (resetButton) {
     resetButton.addEventListener('click', initializeBoard);
 } else {
     console.error("Кнопка сброса #resetButton не найдена!");
 }
-
 document.addEventListener('DOMContentLoaded', () => {
-    debugMessage("DOM fully loaded. Initializing phrases and board...");
     initializeBotPhrases();
     initializeBoard();
 });
