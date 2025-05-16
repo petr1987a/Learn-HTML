@@ -362,11 +362,19 @@ function getAllLegalMoves(playerColor, board) {
 // Вставь ЭТОТ БЛОК в свой script.js, например, после функции getAllLegalMoves
 // или перед initializeBoard. Главное, чтобы они были определены ДО того, как их вызовут.
 
-function updateInfoPanel(messageText) {
-    if (messageElement) messageElement.textContent = messageText;
-    if (currentPlayerElement) currentPlayerElement.textContent = (currentPlayer === 'w' ? 'Белых' : 'Черных');
-    console.log(`InfoPanel: ${messageText}, Ход: ${currentPlayerElement ? currentPlayerElement.textContent : (currentPlayer === 'w' ? 'Белых' : 'Черных')}`);
+// Временная функция для отладки на экране
+function debugMessage(msg) {
+    if (messageElement) {
+        const currentMsg = messageElement.textContent;
+        messageElement.textContent = msg + " | " + currentMsg.substring(0, 100); // Показываем новое + часть старого
+    }
+    // И все равно оставляем console.log для будущего
+    console.log("DEBUG: " + msg);
 }
+
+// Использование:
+// Вместо console.log("Что-то пошло не так");
+// debugMessage("Что-то пошло не так");
 
 function highlightPossibleMoves(row, col, pieceCode) {
     // Это сложная функция. Пока просто выведем в консоль.
