@@ -68,7 +68,6 @@ function initializeBoard() {
 }
 // В script.js
 //const chessBoardElement = document.getElementById('chessBoard'); // Получи свой элемент доски
-
 // Активировать поэтический оверлей
 //if (chessBoardElement) {
     // PoeticBoardOverlay.activate(chessBoardElement);
@@ -81,7 +80,7 @@ function initializeBoard() {
     // PoeticBoardOverlay.debugMessageLocal("Chess board element not found for Poetic Overlay.");
     // или твоя глобальная debugMessage
     // debugMessage("ERROR: Chess board element not found for Poetic Overlay.");
-} 
+// } 
 
 function renderBoard() {
     // debugMessage("renderBoard called"); // Может быть слишком часто
