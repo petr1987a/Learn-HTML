@@ -1,12 +1,7 @@
-// В САМОЕ НАЧАЛО script.js
 function debugMessage(msg) {
-    if (messageElement) {
-        // Для объектов и массивов используем JSON.stringify для более читаемого вывода
-        const messageContent = (typeof msg === 'object' && msg !== null) ? JSON.stringify(msg, null, 2) : msg;
-        const currentInfoPanelMsg = messageElement.textContent;
-        messageElement.textContent = `DEBUG: ${messageContent} | ${currentInfoPanelMsg.substring(0, 150)}`;
-    }
-    // В консоль выводим как есть, она справится с объектами
+    const messageContent = (typeof msg === 'object' && msg !== null) ? JSON.stringify(msg, null, 2) : msg;
+    
+    // Выводим в консоль ВСЕГДА
     console.log("DEBUG:", msg);
 }
 // --- КОНЕЦ ФУНКЦИИ DEBUGMESSAGE ---
