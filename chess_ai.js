@@ -1,6 +1,6 @@
 // ChessAI: умный минимакс с простыми шахматными эвристиками
 const ChessAI = {
-    getSmartMove: 
+getSmartMove: 
             function(boardStateFromGame, playerColor, getAllLegalMovesFunc, isKingInCheckFunc) {
             return new Promise((resolve) => {
             const boardSize = 8;
