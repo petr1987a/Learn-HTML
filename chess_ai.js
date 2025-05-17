@@ -1,4 +1,4 @@
-// Новый движок, заменяющий старый ChessAI
+// Новый шахматный движок
 class ChessEngine {
     constructor() {
         this.board = this.initializeBoard(); // Инициализация доски
