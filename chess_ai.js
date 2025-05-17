@@ -1,8 +1,8 @@
-// ChessAI: умный минимакс с простыми шахматными эвристиками (еще сильнее, но быстро)
-
+// ChessAI: умный минимакс с простыми шахматными эвристиками
 const ChessAI = {
-    getSmartMove: function(boardStateFromGame, playerColor, getAllLegalMovesFunc, isKingInCheckFunc) {
-        return new Promise((resolve) => {
+    getSmartMove: 
+            function(boardStateFromGame, playerColor, getAllLegalMovesFunc, isKingInCheckFunc) {
+            return new Promise((resolve) => {
             const boardSize = 8;
             const moves = getAllLegalMovesFunc(playerColor, boardStateFromGame, boardSize);
 
@@ -113,11 +113,11 @@ const ChessAI = {
             }
             const orderedMoves = orderMoves(moves);
 
-            // Динамическая глубина: чуть выше, но не слишком
-            let depth = 5;
-            if (orderedMoves.length <= 10) depth = 6;
-            else if (orderedMoves.length >= 18) depth = 4;
-            else if (orderedMoves.length >= 28) depth = 3;
+            // Динамическая глубина
+            let depth = 6;
+            if (orderedMoves.length <= 10) depth = 10;
+            else if (orderedMoves.length >= 18) depth = 5;
+            else if (orderedMoves.length >= 28) depth = 4;
            
 
             // Синхронно считаем минимакс для всех ходов
@@ -140,6 +140,5 @@ const ChessAI = {
                 }
             }
             resolve(bestMove);
-        });
-    }
+        });                
 };
