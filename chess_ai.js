@@ -41,6 +41,9 @@ class ChessEngine {
 
     makeMove(from, to) {
         const piece = this.board[from.rank][from.file];
+           if (!ChessRules.isValidMove(piece, from, to, this.board)) {
+        throw new Error("Недопустимый ход!");
+    }
         this.board[to.rank][to.file] = piece;
         this.board[from.rank][from.file] = '';
         this.currentPlayer = this.currentPlayer === 'w' ? 'b' : 'w';
