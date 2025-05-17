@@ -114,10 +114,10 @@ const ChessAI = {
             const orderedMoves = orderMoves(moves);
 
             // Динамическая глубина
-            let depth = 6;
-            if (orderedMoves.length <= 10) depth = 10;
-            else if (orderedMoves.length >= 18) depth = 5;
-            else if (orderedMoves.length >= 28) depth = 4;
+            let depth = 5;
+            if (orderedMoves.length <= 10) depth = 8;
+            else if (orderedMoves.length >= 18) depth = 4;
+            else if (orderedMoves.length >= 28) depth = 3;
            
 
             // Синхронно считаем минимакс для всех ходов
